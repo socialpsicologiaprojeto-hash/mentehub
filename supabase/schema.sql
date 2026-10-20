@@ -90,7 +90,7 @@ begin
     alter table public.financial_transactions add constraint transactions_appointment_owner_fkey
       foreign key (appointment_id, owner_id) references public.appointments (id, owner_id) on delete restrict;
   end if;
-end $;
+end $$;
 
 create index if not exists patients_owner_name_idx on public.patients (owner_id, full_name);
 create index if not exists appointments_owner_starts_idx on public.appointments (owner_id, starts_at);
