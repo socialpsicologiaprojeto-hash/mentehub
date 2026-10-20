@@ -70,7 +70,7 @@ create table if not exists public.financial_transactions (
 
 
 -- Composite ownership constraints prevent linking records across professionals.
-do $
+do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'patients_id_owner_unique') then
     alter table public.patients add constraint patients_id_owner_unique unique (id, owner_id);
