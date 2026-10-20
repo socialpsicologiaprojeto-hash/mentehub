@@ -1,9 +1,31 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpenText, CalendarDays, FileText, History, LogOut, Plus, Save, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, FileText, History, LogOut, Mic, MicOff, Plus, Save, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
+
+type SpeechAlternative = { transcript: string };
+type SpeechResult = { isFinal: boolean; [index: number]: SpeechAlternative };
+type SpeechEvent = { resultIndex: number; results: ArrayLike<SpeechResult> };
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 type ClinicalNote = {
   id: string;
@@ -67,6 +89,9 @@ export default function ClinicalRecordClient({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
+  const [dictating, setDictating] = useState(false);
+  const [dictationMessage, setDictationMessage] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const loadNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -140,6 +165,10 @@ export default function ClinicalRecordClient({
     void loadData();
   }, [loadData]);
 
+  useEffect(() => () => {
+    recognitionRef.current?.stop();
+  }, []);
+
   useEffect(() => {
     if (selectedNoteId && !showForm) void loadHistory(selectedNoteId);
     else setRevisions([]);
@@ -156,6 +185,7 @@ export default function ClinicalRecordClient({
     setAppointmentId("");
     setErrorMessage("");
     setNotice("");
+    setDictationMessage("");
     setShowForm(true);
   }
 
@@ -166,7 +196,61 @@ export default function ClinicalRecordClient({
     setAppointmentId(note.appointment_id ?? "");
     setErrorMessage("");
     setNotice("");
+    setDictationMessage("");
     setShowForm(true);
+  }
+
+  function toggleDictation() {
+    if (dictating) {
+      recognitionRef.current?.stop();
+      setDictating(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setDictationMessage("Seu navegador não oferece ditado por voz compatível. Use um navegador compatível ou digite a evolução.");
+      return;
+    }
+
+    setDictationMessage("");
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const finalized: string[] = [];
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result?.isFinal && result[0]?.transcript.trim()) finalized.push(result[0].transcript.trim());
+      }
+      if (finalized.length) {
+        const transcript = finalized.join(" ");
+        setContent((current) => {
+          const separator = current && !/\s$/.test(current) ? " " : "";
+          return (current + separator + transcript).slice(0, 20000);
+        });
+      }
+    };
+    recognition.onerror = (event) => {
+      setDictating(false);
+      setDictationMessage(event.error === "not-allowed"
+        ? "Permita o acesso ao microfone no navegador para usar o ditado."
+        : "O ditado foi interrompido. Confira o microfone e tente novamente.");
+    };
+    recognition.onend = () => {
+      setDictating(false);
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setDictating(true);
+    } catch {
+      recognitionRef.current = null;
+      setDictating(false);
+      setDictationMessage("Não foi possível iniciar o ditado. Verifique as permissões do microfone e tente novamente.");
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -280,8 +364,17 @@ export default function ClinicalRecordClient({
             </div>
             <div className="patient-field clinical-content-field">
               <label htmlFor="clinical-content">Evolução clínica *</label>
-              <textarea id="clinical-content" required maxLength={20000} rows={10} value={content} onChange={(event) => setContent(event.target.value)} placeholder="Registre a evolução de forma objetiva, ética e pertinente ao atendimento." />
+              <div className="clinical-dictation-actions">
+                <button type="button" className="patients-quiet-button" onClick={toggleDictation}>
+                  {dictating ? <MicOff size={15} /> : <Mic size={15} />}
+                  {dictating ? "Parar ditado" : "Ditar por voz"}
+                </button>
+                {dictating && <span role="status">Ouvindo… fale a evolução após a sessão.</span>}
+              </div>
+              <textarea id="clinical-content" required maxLength={20000} rows={10} value={content} onChange={(event) => setContent(event.target.value)} placeholder="Digite ou dite a evolução e revise o texto antes de salvar." />
+              {dictationMessage && <small role="status">{dictationMessage}</small>}
               <small>{content.length.toLocaleString("pt-BR")} / 20.000 caracteres</small>
+              <p className="patient-privacy-note">O reconhecimento de voz depende do navegador e pode ser processado por seu fornecedor. Use o ditado somente após a sessão, nunca para gravar a conversa com o paciente. Revise o texto antes de salvar.</p>
             </div>
             <p className="patient-privacy-note">Cada salvamento gera uma versão no histórico. Não use o campo administrativo do cadastro de pacientes para anotações clínicas.</p>
             <div className="patient-form-actions">
