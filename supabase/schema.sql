@@ -104,6 +104,54 @@ for each row execute function public.set_updated_at();
 drop trigger if exists patients_set_updated_at on public.patients;
 create trigger patients_set_updated_at before update on public.patients
 for each row execute function public.set_updated_at();
+-- Prevent overlapping appointments for the same professional, including concurrent writes.
+-- Cancelled appointments no longer reserve their time slot.
+create or replace function public.prevent_appointment_overlap()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.status = 'cancelled' then
+    return new;
+  end if;
+
+  -- Serialize scheduling writes per professional so two simultaneous inserts
+  -- cannot both pass the overlap check.
+  perform pg_advisory_xact_lock(hashtextextended(new.owner_id::text, 0));
+
+  if exists (
+    select 1
+    from public.appointments a
+    where a.owner_id = new.owner_id
+      and a.id is distinct from new.id
+      and a.status <> 'cancelled'
+      and tstzrange(
+        a.starts_at,
+        a.starts_at + (a.duration_minutes * interval '1 minute'),
+        '[)'
+      ) && tstzrange(
+        new.starts_at,
+        new.starts_at + (new.duration_minutes * interval '1 minute'),
+        '[)'
+      )
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'appointment_time_conflict';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists appointments_prevent_overlap on public.appointments;
+create trigger appointments_prevent_overlap
+before insert or update of owner_id, starts_at, duration_minutes, status
+on public.appointments
+for each row execute function public.prevent_appointment_overlap();
+
 drop trigger if exists appointments_set_updated_at on public.appointments;
 create trigger appointments_set_updated_at before update on public.appointments
 for each row execute function public.set_updated_at();
