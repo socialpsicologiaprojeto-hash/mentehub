@@ -105,3 +105,35 @@
 .agenda-status-cancelled{background:#f5e8e5;color:#9a5c51}
 .agenda-status-no_show{background:#f0e8f3;color:#80618b}
 @media(max-width:650px){.agenda-day-card{padding:13px}.agenda-day-nav{gap:8px}.agenda-day-nav>div{min-width:calc(100% - 100px);order:-1}.agenda-date-input{flex:1;max-width:none}.agenda-appointment{grid-template-columns:70px minmax(0,1fr);gap:12px}.agenda-appointment-time strong{font-size:15px}.agenda-appointment-controls{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.agenda-appointment-controls select{max-width:100%}}
+
+
+/* Prontuário clínico */
+.clinical-content{max-width:1120px}
+.clinical-warning{padding:13px 15px;margin:0 0 17px;border:1px solid #e8dfc6;border-radius:9px;background:#faf7ed;color:#756947;font-size:11px;line-height:1.7}
+.clinical-warning strong{color:#665936}
+.clinical-form-card .patient-field{margin-top:16px}
+.clinical-content-field textarea{width:100%;resize:vertical;min-height:190px;padding:12px 13px;border:1px solid var(--line);border-radius:8px;background:#fffefa;color:var(--ink);font:inherit;font-size:12px;line-height:1.7;outline-color:#9cb7a1}
+.clinical-content-field>small{align-self:flex-end;color:#8b968d;font-size:10px}
+.clinical-record-grid{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.2fr);gap:17px;align-items:start}
+.clinical-notes-card,.clinical-detail-card{min-width:0}
+.clinical-note-list{display:flex;flex-direction:column}
+.clinical-note-item{display:flex;flex-direction:column;gap:8px;text-align:left;padding:14px 10px;border:0;border-top:1px solid #eff1eb;background:transparent;color:var(--ink);cursor:pointer}
+.clinical-note-item:hover,.clinical-note-item.selected{background:#f4f6f0}
+.clinical-note-item.selected{box-shadow:inset 3px 0 #64836a}
+.clinical-note-date{display:flex;align-items:center;gap:6px;color:#728175;font-size:10px}
+.clinical-note-preview{font-size:11px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.clinical-note-meta{color:#8b968d;font-size:9px}
+.clinical-detail-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.clinical-detail-heading h2{margin:0;font-family:var(--serif);font-size:20px;font-weight:500}
+.clinical-detail-heading p{margin:6px 0 0;color:#8b968d;font-size:10px}
+.clinical-note-full{padding:18px 2px 22px;min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere;color:#435348;font-size:12px;line-height:1.85}
+.clinical-history-heading{display:flex;align-items:center;gap:8px;padding:14px 0;border-top:1px solid var(--line);color:#536c59;font-size:12px}
+.clinical-revision-list{display:flex;flex-direction:column;gap:10px}
+.clinical-revision{padding:12px;border:1px solid #edf0e9;border-radius:8px;background:#fbfbf7}
+.clinical-revision>div{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.clinical-revision strong{font-size:10px;color:#536c59}
+.clinical-revision time{font-size:9px;color:#8b968d}
+.clinical-revision p{margin:10px 0 0;font-size:11px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;color:#56655a}
+.clinical-muted{font-size:11px;color:#8b968d}
+.clinical-detail-empty{min-height:260px}
+@media(max-width:760px){.clinical-record-grid{grid-template-columns:1fr}.clinical-detail-heading{align-items:flex-start}.clinical-revision>div{align-items:flex-start;flex-direction:column;gap:5px}}

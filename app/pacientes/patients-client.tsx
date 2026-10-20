@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, LogOut, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Patient = {
@@ -236,7 +236,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
                       <td><strong>{patient.full_name}</strong></td>
                       <td><span>{patient.email || "—"}</span><small>{patient.phone || ""}</small></td>
                       <td><span className={patient.status === "active" ? "patient-status patient-status-active" : "patient-status"}>{patient.status === "active" ? "Ativo" : "Inativo"}</span></td>
-                      <td><div className="patient-row-actions"><button type="button" className="patients-icon-button" onClick={() => startEdit(patient)} aria-label={`Editar ${patient.full_name}`}><Pencil size={15} /></button><button type="button" className="patients-icon-button patients-delete-button" onClick={() => void deletePatient(patient)} aria-label={`Excluir ${patient.full_name}`}><Trash2 size={15} /></button></div></td>
+                      <td><div className="patient-row-actions"><Link href={`/pacientes/${patient.id}/prontuario`} className="patients-icon-button" aria-label={`Abrir prontuário de ${patient.full_name}`} title="Prontuário"><BookOpenText size={15} /></Link><button type="button" className="patients-icon-button" onClick={() => startEdit(patient)} aria-label={`Editar ${patient.full_name}`}><Pencil size={15} /></button><button type="button" className="patients-icon-button patients-delete-button" onClick={() => void deletePatient(patient)} aria-label={`Excluir ${patient.full_name}`}><Trash2 size={15} /></button></div></td>
                     </tr>
                   ))}
                 </tbody>
