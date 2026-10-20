@@ -111,7 +111,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-as $
+as $$
 begin
   if new.status = 'cancelled' then
     return new;
@@ -144,7 +144,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists appointments_prevent_overlap on public.appointments;
 create trigger appointments_prevent_overlap
