@@ -49,6 +49,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()));
+  const [dateReady, setDateReady] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [form, setForm] = useState<AppointmentForm>(() => initialForm(dateKey(new Date())));
@@ -85,7 +86,22 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
     setLoading(false);
   }, [selectedDate, supabase]);
 
-  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    const savedDate = window.localStorage.getItem("mentehub-agenda-selected-date");
+    if (savedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(savedDate)) {
+      setSelectedDate(savedDate);
+    }
+    setDateReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!dateReady) return;
+    window.localStorage.setItem("mentehub-agenda-selected-date", selectedDate);
+  }, [dateReady, selectedDate]);
+
+  useEffect(() => {
+    if (dateReady) void loadData();
+  }, [dateReady, loadData]);
 
   function openForm() {
     setForm(initialForm(selectedDate));
