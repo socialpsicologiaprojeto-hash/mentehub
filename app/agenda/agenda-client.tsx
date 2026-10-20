@@ -142,6 +142,28 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
       return;
     }
     try {
+      const endsAt = new Date(start.getTime() + duration * 60_000);
+      // Fetch every appointment that could overlap; the database trigger is the
+      // authoritative guard against concurrent requests.
+      const { data: nearbyAppointments, error: conflictQueryError } = await supabase
+        .from("appointments")
+        .select("id, starts_at, duration_minutes, status")
+        .gte("starts_at", new Date(start.getTime() - 240 * 60_000).toISOString())
+        .lt("starts_at", endsAt.toISOString())
+        .neq("status", "cancelled");
+      if (conflictQueryError) throw conflictQueryError;
+      const hasConflict = (nearbyAppointments ?? []).some((appointment) => {
+        if (appointment.id === editingId) return false;
+        const existingStart = new Date(appointment.starts_at).getTime();
+        const existingEnd = existingStart + Number(appointment.duration_minutes) * 60_000;
+        return start.getTime() < existingEnd && existingStart < endsAt.getTime();
+      });
+      if (hasConflict) {
+        setErrorMessage("Este horário conflita com outra consulta. Escolha outro horário ou ajuste a duração.");
+        setSaving(false);
+        return;
+      }
+
       const values = {
         patient_id: form.patient_id || null,
         title: form.title.trim() || "Consulta",
@@ -165,7 +187,10 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
       setSelectedDate(form.date);
       if (form.date === selectedDate) await loadData();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Não foi possível salvar a consulta.");
+      const message = error instanceof Error ? error.message : "";
+      setErrorMessage(message.includes("appointment_time_conflict")
+        ? "Este horário acabou de ser ocupado por outra consulta. Atualize a agenda e escolha outro horário."
+        : message || "Não foi possível salvar a consulta.");
     } finally {
       setSaving(false);
     }
