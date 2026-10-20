@@ -53,7 +53,7 @@ create table if not exists public.appointments (
 create table if not exists public.financial_transactions (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  patient_id uuid references public.patients(id) on delete set null,
+  patient_id uuid, -- Composite ownership FK below restricts deletion while linked.
   appointment_id uuid,
   kind text not null check (kind in ('income', 'expense')),
   category text not null,
