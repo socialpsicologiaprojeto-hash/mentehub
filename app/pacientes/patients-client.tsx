@@ -102,10 +102,11 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
 
     try {
       const result = editingId
-        ? await supabase.from("patients").update(payload).eq("id", editingId)
-        : await supabase.from("patients").insert(payload);
+        ? await supabase.from("patients").update(payload).eq("id", editingId).select("id").maybeSingle()
+        : await supabase.from("patients").insert(payload).select("id").single();
 
       if (result.error) throw result.error;
+      if (!result.data) throw new Error("Cadastro não encontrado ou sem permissão para alterá-lo.");
 
       setShowForm(false);
       setEditingId(null);
@@ -123,13 +124,20 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     if (!window.confirm(`Deseja excluir o cadastro de ${patient.full_name}? Esta ação não pode ser desfeita.`)) return;
     setErrorMessage("");
     setNotice("");
-    const { error } = await supabase.from("patients").delete().eq("id", patient.id);
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from("patients")
+        .delete()
+        .eq("id", patient.id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Cadastro não encontrado ou sem permissão para excluí-lo.");
+      await loadPatients();
+      setNotice("Cadastro excluído.");
+    } catch {
       setErrorMessage("Não foi possível excluir. Verifique se há consultas ou lançamentos financeiros vinculados a este cadastro.");
-      return;
     }
-    setNotice("Cadastro excluído.");
-    await loadPatients();
   }
 
   async function signOut() {
