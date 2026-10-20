@@ -39,7 +39,7 @@ create table if not exists public.patients (
 create table if not exists public.appointments (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  patient_id uuid references public.patients(id) on delete set null,
+  patient_id uuid,
   title text not null default 'Consulta',
   starts_at timestamptz not null,
   duration_minutes integer not null default 50 check (duration_minutes between 10 and 240),
@@ -54,7 +54,7 @@ create table if not exists public.financial_transactions (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   patient_id uuid references public.patients(id) on delete set null,
-  appointment_id uuid references public.appointments(id) on delete set null,
+  appointment_id uuid,
   kind text not null check (kind in ('income', 'expense')),
   category text not null,
   description text not null,
@@ -67,6 +67,30 @@ create table if not exists public.financial_transactions (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint transactions_description_not_blank check (length(trim(description)) > 0)
 );
+
+
+-- Composite ownership constraints prevent linking records across professionals.
+do $
+begin
+  if not exists (select 1 from pg_constraint where conname = 'patients_id_owner_unique') then
+    alter table public.patients add constraint patients_id_owner_unique unique (id, owner_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'appointments_id_owner_unique') then
+    alter table public.appointments add constraint appointments_id_owner_unique unique (id, owner_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'appointments_patient_owner_fkey') then
+    alter table public.appointments add constraint appointments_patient_owner_fkey
+      foreign key (patient_id, owner_id) references public.patients (id, owner_id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'transactions_patient_owner_fkey') then
+    alter table public.financial_transactions add constraint transactions_patient_owner_fkey
+      foreign key (patient_id, owner_id) references public.patients (id, owner_id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'transactions_appointment_owner_fkey') then
+    alter table public.financial_transactions add constraint transactions_appointment_owner_fkey
+      foreign key (appointment_id, owner_id) references public.appointments (id, owner_id) on delete restrict;
+  end if;
+end $;
 
 create index if not exists patients_owner_name_idx on public.patients (owner_id, full_name);
 create index if not exists appointments_owner_starts_idx on public.appointments (owner_id, starts_at);
