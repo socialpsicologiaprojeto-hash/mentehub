@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, LogOut, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -153,10 +154,10 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
   return (
     <main className="patients-page">
       <header className="patients-topbar">
-        <a className="auth-brand" href="/" aria-label="MenteHub início">
+        <Link className="auth-brand" href="/" aria-label="MenteHub início">
           <span className="auth-brand-mark"><Users size={19} /></span>
           <span><strong>mentehub</strong><small>seu consultório em harmonia</small></span>
-        </a>
+        </Link>
         <div className="patients-account">
           <span>{userEmail}</span>
           <button type="button" className="patients-quiet-button" onClick={signOut}><LogOut size={15} /> Sair</button>
@@ -164,7 +165,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
       </header>
 
       <section className="patients-content">
-        <a className="patients-back" href="/"><ArrowLeft size={15} /> Visão geral</a>
+        <Link className="patients-back" href="/"><ArrowLeft size={15} /> Visão geral</Link>
         <div className="patients-heading">
           <div>
             <p className="auth-eyebrow">ROTINA DO CONSULTÓRIO</p>

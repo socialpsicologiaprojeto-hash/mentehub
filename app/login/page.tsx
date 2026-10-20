@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Heart, LoaderCircle, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -55,10 +56,10 @@ export default function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <a className="auth-brand" href="/" aria-label="MenteHub início">
+        <Link className="auth-brand" href="/" aria-label="MenteHub início">
           <span className="auth-brand-mark"><Heart size={20} /></span>
           <span><strong>mentehub</strong><small>seu consultório em harmonia</small></span>
-        </a>
+        </Link>
         <p className="auth-eyebrow">SEU ESPAÇO PROFISSIONAL</p>
         <h1>{mode === "login" ? "Que bom ter você de volta." : "Vamos preparar seu espaço."}</h1>
         <p className="auth-description">
@@ -109,7 +110,7 @@ export default function LoginPage() {
           {mode === "login" ? "Ainda não tem conta? Criar conta" : "Já tem uma conta? Entrar"}
         </button>
         <p className="auth-security"><ShieldCheck size={14} /> Seus dados são protegidos por autenticação e políticas de acesso.</p>
-        <a className="auth-back" href="/">Voltar à página inicial</a>
+        <Link className="auth-back" href="/">Voltar à página inicial</Link>
       </section>
     </main>
   );
