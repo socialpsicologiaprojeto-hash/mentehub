@@ -88,7 +88,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
 
   useEffect(() => {
     const savedDate = window.localStorage.getItem("mentehub-agenda-selected-date");
-    if (savedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(savedDate)) {
+    if (savedDate && /^\d{4}-\d{2}-\d{2}$/.test(savedDate)) {
       setSelectedDate(savedDate);
     }
     setDateReady(true);
