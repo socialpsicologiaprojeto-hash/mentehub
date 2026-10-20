@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Activity, ArrowRight, Bell, CalendarDays, Check, ChevronDown, CreditCard, FileImage, Heart, Home, LayoutGrid, MessageCircle, Palette, Plus, Search, Settings2, ShieldCheck, Sparkles, Users, WandSparkles } from "lucide-react";
 
 const groups = [
@@ -14,6 +15,7 @@ const ideas = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
   const [active,setActive] = useState("Visão geral");
   const [topic,setTopic] = useState("Ansiedade e autocuidado");
   const [format,setFormat] = useState("Carrossel");
@@ -22,7 +24,7 @@ export default function HomePage() {
     <aside className="sidebar">
       <a className="brand" href="#"><span className="brand-mark"><Heart size={20}/></span><span><strong>mentehub</strong><small>seu consultório em harmonia</small></span></a>
       <button className="workspace-switch" onClick={()=>setNotice("Espaço de trabalho demonstrativo.")}><span className="avatar avatar-brand">MC</span><span className="workspace-copy"><strong>Mariana Costa</strong><small>Psicologia clínica</small></span><ChevronDown size={15}/></button>
-      <nav className="nav">{groups.map(g=><div className="nav-group" key={g.title}><p className="nav-heading">{g.title}</p>{g.items.map(item=><button key={item.name} className={active===item.name?"nav-link active":"nav-link"} onClick={()=>{setActive(item.name);if(item.name!=="Visão geral")setNotice(item.name+" — módulo visual em desenvolvimento.");}}><item.icon size={17}/><span>{item.name}</span>{item.name==="Estúdio criativo"&&<span className="ai-badge">IA</span>}</button>)}</div>)}</nav>
+      <nav className="nav">{groups.map(g=><div className="nav-group" key={g.title}><p className="nav-heading">{g.title}</p>{g.items.map(item=><button key={item.name} className={active===item.name?"nav-link active":"nav-link"} onClick={()=>{setActive(item.name);if(item.name==="Pacientes"){router.push("/pacientes");return;}if(item.name!=="Visão geral")setNotice(item.name+" — módulo em desenvolvimento.");}}><item.icon size={17}/><span>{item.name}</span>{item.name==="Estúdio criativo"&&<span className="ai-badge">IA</span>}</button>)}</div>)}</nav>
       <div className="sidebar-bottom"><div className="plan-card"><div className="plan-icon"><Sparkles size={16}/></div><strong>Sua marca, com intenção.</strong><p>Um espaço para deixar sua comunicação mais leve e consistente.</p><button onClick={()=>setActive("Identidade visual")}>Personalizar marca <ArrowRight size={14}/></button></div><button className="nav-link" onClick={()=>setNotice("Central de ajuda em breve.")}><Settings2 size={17}/><span>Configurações</span></button><div className="profile"><span className="avatar">MC</span><span className="workspace-copy"><strong>Mariana Costa</strong><small>Plano Essencial · Demo</small></span></div></div>
     </aside>
     <section className="main-area">
