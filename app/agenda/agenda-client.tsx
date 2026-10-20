@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, LogOut, Plus, Users, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, LogOut, Pencil, Plus, Users, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -54,6 +54,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [form, setForm] = useState<AppointmentForm>(() => initialForm(dateKey(new Date())));
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -104,7 +105,24 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
   }, [dateReady, loadData]);
 
   function openForm() {
+    setEditingId(null);
     setForm(initialForm(selectedDate));
+    setErrorMessage("");
+    setNotice("");
+    setShowForm(true);
+  }
+
+  function editAppointment(appointment: Appointment) {
+    const startsAt = new Date(appointment.starts_at);
+    setEditingId(appointment.id);
+    setForm({
+      patient_id: appointment.patient_id ?? "",
+      title: appointment.title,
+      date: dateKey(startsAt),
+      time: [String(startsAt.getHours()).padStart(2, "0"), String(startsAt.getMinutes()).padStart(2, "0")].join(":"),
+      duration_minutes: String(appointment.duration_minutes),
+      price: String(appointment.price).replace(".", ","),
+    });
     setErrorMessage("");
     setNotice("");
     setShowForm(true);
@@ -124,16 +142,26 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
       return;
     }
     try {
-      const { error } = await supabase.from("appointments").insert({
+      const values = {
         patient_id: form.patient_id || null,
         title: form.title.trim() || "Consulta",
         starts_at: start.toISOString(),
         duration_minutes: duration,
         price,
-      });
-      if (error) throw error;
+      };
+      if (editingId) {
+        const { data, error } = await supabase.from("appointments")
+          .update(values).eq("id", editingId).select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("A consulta não foi encontrada ou você não tem permissão para alterá-la.");
+      } else {
+        const { error } = await supabase.from("appointments").insert(values);
+        if (error) throw error;
+      }
+      const wasEditing = Boolean(editingId);
       setShowForm(false);
-      setNotice("Consulta agendada.");
+      setEditingId(null);
+      setNotice(wasEditing ? "Consulta atualizada." : "Consulta agendada.");
       setSelectedDate(form.date);
       if (form.date === selectedDate) await loadData();
     } catch (error) {
@@ -199,7 +227,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
         {errorMessage && <div className="patients-error" role="alert">{errorMessage}</div>}
 
         {showForm && <form className="patient-form-card" onSubmit={handleSubmit}>
-          <div className="patient-form-heading"><h2>Nova consulta</h2><button type="button" className="patients-icon-button" onClick={() => setShowForm(false)} aria-label="Fechar formulário"><X size={17} /></button></div>
+          <div className="patient-form-heading"><h2>{editingId ? "Editar consulta" : "Nova consulta"}</h2><button type="button" className="patients-icon-button" onClick={() => { setShowForm(false); setEditingId(null); }} aria-label="Fechar formulário"><X size={17} /></button></div>
           <div className="patient-form-grid">
             <div className="patient-field patient-field-wide"><label htmlFor="appointment-title">Título</label><input id="appointment-title" maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></div>
             <div className="patient-field patient-field-wide"><label htmlFor="appointment-patient">Paciente (opcional)</label><select id="appointment-patient" value={form.patient_id} onChange={(event) => setForm({ ...form, patient_id: event.target.value })}><option value="">Sem paciente vinculado</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.full_name}</option>)}</select></div>
@@ -209,7 +237,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
             <div className="patient-field"><label htmlFor="appointment-price">Valor previsto (R$)</label><input id="appointment-price" inputMode="decimal" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} placeholder="0,00" /></div>
           </div>
           <p className="patient-privacy-note">Use a agenda para informações administrativas. Não registre diagnósticos, conteúdo de sessões ou prontuários aqui.</p>
-          <div className="patient-form-actions"><button type="button" className="patients-quiet-button" onClick={() => setShowForm(false)}>Cancelar</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? "Salvando…" : "Salvar consulta"}</button></div>
+          <div className="patient-form-actions"><button type="button" className="patients-quiet-button" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancelar</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? "Salvando…" : editingId ? "Salvar alterações" : "Salvar consulta"}</button></div>
         </form>}
 
         <section className="patients-list-card">
@@ -218,7 +246,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
             {appointments.map((appointment) => <article className="agenda-appointment" key={appointment.id}>
               <div className="agenda-appointment-time"><strong>{new Date(appointment.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</strong><small><Clock3 size={12} /> {appointment.duration_minutes} min</small></div>
               <div className="agenda-appointment-main"><strong>{appointment.title}</strong><span><Users size={13} /> {appointment.patient_id ? activePatients.get(appointment.patient_id) ?? "Paciente vinculado" : "Sem paciente vinculado"}</span><small>{money(appointment.price)}</small></div>
-              <div className="agenda-appointment-controls"><span className={"patient-status agenda-status agenda-status-" + appointment.status}>{statusLabels[appointment.status]}</span><select aria-label={"Status da consulta " + appointment.title} value={appointment.status} disabled={updatingId === appointment.id} onChange={(event) => void updateStatus(appointment, event.target.value as AppointmentStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+              <div className="agenda-appointment-controls"><span className={"patient-status agenda-status agenda-status-" + appointment.status}>{statusLabels[appointment.status]}</span><button type="button" className="patients-quiet-button" onClick={() => editAppointment(appointment)} aria-label={"Editar consulta " + appointment.title}><Pencil size={14} /> Editar</button><select aria-label={"Status da consulta " + appointment.title} value={appointment.status} disabled={updatingId === appointment.id} onChange={(event) => void updateStatus(appointment, event.target.value as AppointmentStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
             </article>)}
           </div>}
         </section>
