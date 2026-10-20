@@ -14,6 +14,8 @@ type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
   onresult: ((event: SpeechEvent) => void) | null;
+  onstart: (() => void) | null;
+  onnomatch: (() => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
@@ -92,6 +94,8 @@ export default function ClinicalRecordClient({
   const [dictating, setDictating] = useState(false);
   const [dictationMessage, setDictationMessage] = useState("");
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const userStoppedDictationRef = useRef(false);
+  const dictationErrorRef = useRef(false);
 
   const loadNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -202,22 +206,40 @@ export default function ClinicalRecordClient({
 
   function toggleDictation() {
     if (dictating) {
+      userStoppedDictationRef.current = true;
       recognitionRef.current?.stop();
       setDictating(false);
+      setDictationMessage("Ditado parado. Revise o texto antes de salvar.");
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!window.isSecureContext) {
+      setDictationMessage("O ditado exige uma página segura (HTTPS). Abra o MenteHub pelo endereço oficial com https://.");
+      return;
+    }
     if (!SpeechRecognition) {
-      setDictationMessage("Seu navegador não oferece ditado por voz compatível. Use um navegador compatível ou digite a evolução.");
+      setDictationMessage("Este navegador não disponibiliza a API de reconhecimento de fala. Atualize o Chrome/Edge ou digite a evolução.");
       return;
     }
 
-    setDictationMessage("");
-    const recognition = new SpeechRecognition();
+    setDictationMessage("Solicitação enviada; aguardando o serviço de reconhecimento de voz…");
+    userStoppedDictationRef.current = false;
+    dictationErrorRef.current = false;
+    let recognition: SpeechRecognitionLike;
+    try {
+      recognition = new SpeechRecognition();
+    } catch {
+      setDictationMessage("O navegador reconheceu a API, mas não conseguiu inicializar o serviço de voz. Atualize o navegador e tente novamente.");
+      return;
+    }
     recognition.lang = "pt-BR";
     recognition.continuous = true;
     recognition.interimResults = false;
+    recognition.onstart = () => {
+      setDictating(true);
+      setDictationMessage("Ditado iniciado. Fale uma frase curta para testar.");
+    };
     recognition.onresult = (event) => {
       const finalized: string[] = [];
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
@@ -230,26 +252,43 @@ export default function ClinicalRecordClient({
           const separator = current && !/\s$/.test(current) ? " " : "";
           return (current + separator + transcript).slice(0, 20000);
         });
+        setDictationMessage("Transcrição recebida. Continue falando ou pare o ditado para revisar.");
       }
     };
+    recognition.onnomatch = () => {
+      setDictationMessage("O serviço foi iniciado, mas não reconheceu fala. Confira o microfone, fale perto dele e tente uma frase curta.");
+    };
     recognition.onerror = (event) => {
+      dictationErrorRef.current = true;
       setDictating(false);
-      setDictationMessage(event.error === "not-allowed"
-        ? "Permita o acesso ao microfone no navegador para usar o ditado."
-        : "O ditado foi interrompido. Confira o microfone e tente novamente.");
+      const messages: Record<string, string> = {
+        "not-allowed": "Permissão de microfone/reconhecimento negada. Autorize o microfone nas permissões do site e tente novamente.",
+        "service-not-allowed": "O navegador ou uma política de segurança bloqueou o serviço de reconhecimento de voz.",
+        "audio-capture": "Não foi possível acessar o microfone. Confira se ele está conectado e se o Windows permite seu uso.",
+        "network": "O serviço de reconhecimento falhou na conexão. Verifique a internet, VPN, proxy ou bloqueios de rede.",
+        "no-speech": "Nenhuma fala foi detectada. Confira o microfone e tente falar uma frase curta após iniciar.",
+        "language-not-supported": "O serviço não oferece reconhecimento em português do Brasil neste momento.",
+        "aborted": "O reconhecimento foi interrompido. Clique em Ditar por voz para tentar novamente.",
+      };
+      setDictationMessage(messages[event.error] ?? `Falha de reconhecimento (código: ${event.error}). Verifique permissões, microfone e conexão e tente novamente.`);
     };
     recognition.onend = () => {
       setDictating(false);
-      recognitionRef.current = null;
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      if (userStoppedDictationRef.current && !dictationErrorRef.current) {
+        setDictationMessage("Ditado parado. Revise o texto antes de salvar.");
+      }
     };
     recognitionRef.current = recognition;
     try {
       recognition.start();
-      setDictating(true);
-    } catch {
+    } catch (error) {
       recognitionRef.current = null;
       setDictating(false);
-      setDictationMessage("Não foi possível iniciar o ditado. Verifique as permissões do microfone e tente novamente.");
+      const errorName = error instanceof Error ? error.name : "";
+      setDictationMessage(errorName === "InvalidStateError"
+        ? "O reconhecimento já estava em execução. Aguarde um instante e tente novamente."
+        : "O navegador não conseguiu iniciar o reconhecimento. Verifique as permissões do site e tente novamente.");
     }
   }
 
