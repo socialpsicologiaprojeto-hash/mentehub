@@ -77,3 +77,31 @@
 .patients-empty-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:#e8f0e8;color:#55785b}
 .patients-footer{text-align:center;font-size:9px;color:#a0a79f;margin:25px 0 0}
 @media(max-width:650px){.auth-card{padding:25px 20px}.patients-topbar{height:auto;min-height:65px;padding:12px 15px}.patients-topbar .auth-brand{gap:7px}.patients-topbar .auth-brand strong{font-size:20px}.patients-account{gap:8px}.patients-account>span{display:none}.patients-content{width:calc(100% - 26px);padding-top:22px}.patients-heading{align-items:flex-start;flex-direction:column}.patients-heading>.button{width:100%}.patient-form-card,.patients-list-card{padding:16px}.patient-form-grid{grid-template-columns:1fr}.patient-field-wide{grid-column:auto}.patients-list-heading{align-items:stretch;flex-direction:column}.patients-search{width:100%}.patients-table th,.patients-table td{padding:12px 8px}.patients-table th:nth-child(2),.patients-table td:nth-child(2){min-width:140px}}
+
+
+/* Agenda de consultas */
+.agenda-day-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:15px 18px;margin-bottom:17px}
+.agenda-day-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.agenda-day-nav>div{display:flex;flex:1;min-width:180px;flex-direction:column;gap:4px}
+.agenda-day-nav>div strong{font-size:13px;font-weight:600;color:#344a3c;text-transform:capitalize}
+.agenda-day-nav>div small{font-size:10px;color:#8b968d}
+.agenda-date-input{font:inherit;font-size:11px;color:var(--ink);padding:8px;border:1px solid var(--line);border-radius:8px;background:#fffefa;max-width:155px}
+.agenda-appointments{display:flex;flex-direction:column}
+.agenda-appointment{display:grid;grid-template-columns:94px minmax(0,1fr) auto;align-items:center;gap:17px;padding:17px 4px;border-bottom:1px solid #eff1eb}
+.agenda-appointment:last-child{border-bottom:0}
+.agenda-appointment-time{align-self:stretch;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:6px}
+.agenda-appointment-time strong{font-size:17px;font-weight:600;color:#3f5c47}
+.agenda-appointment-time small{display:flex;align-items:center;gap:4px;color:#8b968d;font-size:10px}
+.agenda-appointment-main{display:flex;min-width:0;flex-direction:column;gap:7px}
+.agenda-appointment-main>strong{font-size:12px;color:#344a3c}
+.agenda-appointment-main>span{display:flex;align-items:center;gap:5px;font-size:10px;color:#7e8b81}
+.agenda-appointment-main>small{font-size:10px;color:#7e8b81}
+.agenda-appointment-controls{display:flex;align-items:flex-end;flex-direction:column;gap:8px}
+.agenda-appointment-controls select{max-width:165px;border:1px solid var(--line);border-radius:7px;padding:7px;background:#fffefa;color:#627267;font:inherit;font-size:10px}
+.agenda-appointment-controls select:disabled{opacity:.6}
+.agenda-status-scheduled{background:#f4efdf;color:#8a7443}
+.agenda-status-confirmed{background:#e8f2e6;color:#4e7756}
+.agenda-status-completed{background:#e8edf5;color:#536c91}
+.agenda-status-cancelled{background:#f5e8e5;color:#9a5c51}
+.agenda-status-no_show{background:#f0e8f3;color:#80618b}
+@media(max-width:650px){.agenda-day-card{padding:13px}.agenda-day-nav{gap:8px}.agenda-day-nav>div{min-width:calc(100% - 100px);order:-1}.agenda-date-input{flex:1;max-width:none}.agenda-appointment{grid-template-columns:70px minmax(0,1fr);gap:12px}.agenda-appointment-time strong{font-size:15px}.agenda-appointment-controls{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.agenda-appointment-controls select{max-width:100%}}
