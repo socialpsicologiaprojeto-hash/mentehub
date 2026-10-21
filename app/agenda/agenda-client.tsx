@@ -6,7 +6,7 @@ import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, LogOut, Pen
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Patient = { id: string; full_name: string; status: "active" | "inactive" };
+type Patient = { id: string; full_name: string; status: "active" | "inactive"; default_session_price: number | string | null; billing_mode: "per_session" | "monthly" };
 type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 type Appointment = {
   id: string;
@@ -65,7 +65,7 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
     setLoading(true);
     setErrorMessage("");
     const [patientResult, appointmentResult] = await Promise.all([
-      supabase.from("patients").select("id, full_name, status").eq("status", "active").order("full_name"),
+      supabase.from("patients").select("id, full_name, status, default_session_price, billing_mode").eq("status", "active").order("full_name"),
       (() => {
         const [year, month, day] = selectedDate.split("-").map(Number);
         const start = new Date(year, month - 1, day);
@@ -255,7 +255,11 @@ export default function AgendaClient({ userEmail }: { userEmail: string }) {
           <div className="patient-form-heading"><h2>{editingId ? "Editar consulta" : "Nova consulta"}</h2><button type="button" className="patients-icon-button" onClick={() => { setShowForm(false); setEditingId(null); }} aria-label="Fechar formulário"><X size={17} /></button></div>
           <div className="patient-form-grid">
             <div className="patient-field patient-field-wide"><label htmlFor="appointment-title">Título</label><input id="appointment-title" maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></div>
-            <div className="patient-field patient-field-wide"><label htmlFor="appointment-patient">Paciente (opcional)</label><select id="appointment-patient" value={form.patient_id} onChange={(event) => setForm({ ...form, patient_id: event.target.value })}><option value="">Sem paciente vinculado</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.full_name}</option>)}</select></div>
+            <div className="patient-field patient-field-wide"><label htmlFor="appointment-patient">Paciente (opcional)</label><select id="appointment-patient" value={form.patient_id} onChange={(event) => {
+              const selectedPatient = patients.find((patient) => patient.id === event.target.value);
+              const defaultPrice = selectedPatient?.default_session_price;
+              setForm({ ...form, patient_id: event.target.value, ...(defaultPrice != null && Number(defaultPrice) > 0 ? { price: String(defaultPrice).replace(".", ",") } : {}) });
+            }}><option value="">Sem paciente vinculado</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.full_name}</option>)}</select></div>
             <div className="patient-field"><label htmlFor="appointment-date">Data *</label><input id="appointment-date" type="date" required value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></div>
             <div className="patient-field"><label htmlFor="appointment-time">Horário *</label><input id="appointment-time" type="time" required value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></div>
             <div className="patient-field"><label htmlFor="appointment-duration">Duração (minutos)</label><select id="appointment-duration" value={form.duration_minutes} onChange={(event) => setForm({ ...form, duration_minutes: event.target.value })}>{[30,40,45,50,60,75,90,120].map((minutes) => <option key={minutes} value={minutes}>{minutes} minutos</option>)}</select></div>
