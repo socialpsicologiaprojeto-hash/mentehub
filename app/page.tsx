@@ -1,3 +1,5 @@
+"use server";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -14,7 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = name.trim().split(/\\s+/).filter(Boolean);
   if (parts.length === 0) return "P";
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
@@ -41,7 +43,6 @@ export default async function HomePage() {
     { label: "Agenda", href: "/agenda", icon: CalendarDays },
     { label: "Pacientes e prontuários", href: "/pacientes", icon: Users },
     { label: "Financeiro", href: "/financeiro", icon: CreditCard },
-    { label: "Perfil profissional", href: "/perfil", icon: UserRound },
   ];
 
   return (
@@ -75,7 +76,7 @@ export default async function HomePage() {
         <div className="sidebar-bottom">
           <Link className="nav-link" href="/perfil">
             <Settings size={17} />
-            <span>Configurações do perfil</span>
+            <span>Meu perfil profissional</span>
           </Link>
           <div className="profile">
             <span className="avatar">{avatar}</span>
@@ -104,64 +105,68 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">ACESSO RÁPIDO</p>
-              <h2>O que você precisa hoje?</h2>
-              <p className="section-desc">Os módulos disponíveis estão reunidos abaixo.</p>
+          <section className="templates-section" aria-labelledby="modules-heading">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">SEU CONSULTÓRIO</p>
+                <h2 id="modules-heading">Acesse seus módulos</h2>
+                <p className="section-desc">Somente as áreas disponíveis no MenteHub.</p>
+              </div>
             </div>
-          </div>
 
-          <div className="template-grid">
-            <Link className="template-card" href="/agenda">
-              <div className="template-preview sage">
-                <span className="template-category">CONSULTÓRIO</span>
-                <p>Organize seus horários e acompanhe as consultas.</p>
-                <span className="template-index"><CalendarDays size={22} /></span>
+            <div className="template-grid">
+              <Link className="template-card" href="/agenda">
+                <div className="template-preview sage">
+                  <span className="template-category">CONSULTÓRIO</span>
+                  <p>Organize seus horários e acompanhe as consultas.</p>
+                  <span className="template-index"><CalendarDays size={22} /></span>
+                </div>
+                <div className="template-meta">
+                  <div><strong>Agenda</strong><small>Consultas e horários</small></div>
+                  <ArrowRight size={16} />
+                </div>
+              </Link>
+
+              <Link className="template-card" href="/pacientes">
+                <div className="template-preview peach">
+                  <span className="template-category">CUIDADO CLÍNICO</span>
+                  <p>Acesse cadastros, prontuários e anamneses.</p>
+                  <span className="template-index"><Users size={22} /></span>
+                </div>
+                <div className="template-meta">
+                  <div><strong>Pacientes e prontuários</strong><small>Cadastros e registros clínicos</small></div>
+                  <ArrowRight size={16} />
+                </div>
+              </Link>
+
+              <Link className="template-card" href="/financeiro">
+                <div className="template-preview lavender">
+                  <span className="template-category">GESTÃO</span>
+                  <p>Acompanhe recebíveis, mensalidades e pagamentos.</p>
+                  <span className="template-index"><CreditCard size={22} /></span>
+                </div>
+                <div className="template-meta">
+                  <div><strong>Financeiro</strong><small>Receitas e despesas</small></div>
+                  <ArrowRight size={16} />
+                </div>
+              </Link>
+            </div>
+          </section>
+
+          <section className="bottom-grid" aria-label="Perfil profissional">
+            <article className="bottom-card">
+              <div className="bottom-icon"><UserRound size={18} /></div>
+              <div>
+                <h3>Seu perfil profissional</h3>
+                <p>Confira e atualize os dados do seu perfil.</p>
+                <Link className="text-button" href="/perfil">Acessar perfil <ArrowRight size={14} /></Link>
               </div>
-              <div className="template-meta">
-                <div><strong>Agenda</strong><small>Consultas e horários</small></div>
-                <ArrowRight size={16} />
-              </div>
-            </Link>
-            <Link className="template-card" href="/pacientes">
-              <div className="template-preview peach">
-                <span className="template-category">CUIDADO CLÍNICO</span>
-                <p>Consulte cadastros e acesse os prontuários.</p>
-                <span className="template-index"><Users size={22} /></span>
-              </div>
-              <div className="template-meta">
-                <div><strong>Pacientes e prontuários</strong><small>Cadastros, anamnese e evoluções</small></div>
-                <ArrowRight size={16} />
-              </div>
-            </Link>
-            <Link className="template-card" href="/financeiro">
-              <div className="template-preview lavender">
-                <span className="template-category">GESTÃO</span>
-                <p>Acompanhe recebíveis, pagamentos e despesas.</p>
-                <span className="template-index"><CreditCard size={22} /></span>
-              </div>
-              <div className="template-meta">
-                <div><strong>Financeiro</strong><small>Receitas e despesas</small></div>
-                <ArrowRight size={16} />
-              </div>
-            </Link>
-            <Link className="template-card" href="/perfil">
-              <div className="template-preview sage">
-                <span className="template-category">PERSONALIZAÇÃO</span>
-                <p>Mantenha seus dados profissionais atualizados.</p>
-                <span className="template-index"><UserRound size={22} /></span>
-              </div>
-              <div className="template-meta">
-                <div><strong>Perfil profissional</strong><small>Nome e informações do perfil</small></div>
-                <ArrowRight size={16} />
-              </div>
-            </Link>
-          </div>
+            </article>
+          </section>
 
           <footer className="footer">
             <span>mentehub · Feito para cuidar de quem cuida.</span>
-            <span>Seu espaço profissional</span>
+            <span>Conectado como {auth.user.email ?? "Conta autenticada"}</span>
           </footer>
         </div>
       </section>
