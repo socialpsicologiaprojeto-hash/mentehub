@@ -31,6 +31,7 @@ const methodLabels: Record<PaymentMethod, string> = {
   debit_card: "Cartão de débito", bank_transfer: "Transferência", other: "Outro",
 };
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function parseMoney(value: string) { const normalized = value.trim().includes(",") ? value.trim().replace(/\\./g, "").replace(",", ".") : value.trim(); return Number(normalized); }
 const dateKey = (date: Date) => [date.getFullYear(), String(date.getMonth()+1).padStart(2,"0"), String(date.getDate()).padStart(2,"0")].join("-");
 const monthKey = (value: string) => value.slice(0, 7);
 const today = () => dateKey(new Date());
