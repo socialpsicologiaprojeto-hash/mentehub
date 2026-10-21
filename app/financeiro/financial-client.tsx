@@ -31,7 +31,7 @@ const methodLabels: Record<PaymentMethod, string> = {
   debit_card: "Cartão de débito", bank_transfer: "Transferência", other: "Outro",
 };
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-function parseMoney(value: string) { const normalized = value.trim().includes(",") ? value.trim().replace(/\\./g, "").replace(",", ".") : value.trim(); return Number(normalized); }
+function parseMoney(value: string) { const normalized = value.trim().includes(",") ? value.trim().replace(/\./g, "").replace(",", ".") : value.trim(); return Number(normalized); }
 const dateKey = (date: Date) => [date.getFullYear(), String(date.getMonth()+1).padStart(2,"0"), String(date.getDate()).padStart(2,"0")].join("-");
 const monthKey = (value: string) => value.slice(0, 7);
 const today = () => dateKey(new Date());
@@ -114,7 +114,7 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
   }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setErrorMessage(""); setNotice("");
-    const amount = Number(form.amount.trim().replace(/\./g, "").replace(",", "."));
+    const amount = parseMoney(form.amount);
     if (!form.category.trim() || !form.description.trim() || !Number.isFinite(amount) || amount <= 0) {
       setErrorMessage("Preencha categoria, descrição e um valor maior que zero."); setSaving(false); return;
     }
