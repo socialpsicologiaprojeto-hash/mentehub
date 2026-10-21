@@ -339,7 +339,7 @@ export default function ClinicalRecordClient({
           const prefix = current.slice(0, dictationStartLengthRef.current);
           const dictated = current.slice(dictationStartLengthRef.current);
           const formatted = formatDictatedText(dictated);
-          const separator = prefix && formatted && !/\\s$/.test(prefix) ? " " : "";
+          const separator = prefix && formatted && !/\s$/.test(prefix) ? " " : "";
           return `${prefix}${separator}${formatted}`;
         });
         setDictationMessage("Ditado finalizado. A pontuação foi aplicada automaticamente; revise o texto antes de salvar.");
