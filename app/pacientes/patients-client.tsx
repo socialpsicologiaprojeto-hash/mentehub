@@ -11,6 +11,7 @@ type Patient = {
   full_name: string;
   email: string | null;
   phone: string | null;
+  requires_invoice: boolean;
   status: "active" | "inactive";
   created_at: string;
 };
@@ -19,10 +20,11 @@ type PatientForm = {
   full_name: string;
   email: string;
   phone: string;
+  requires_invoice: boolean;
   status: "active" | "inactive";
 };
 
-const emptyForm: PatientForm = { full_name: "", email: "", phone: "", status: "active" };
+const emptyForm: PatientForm = { full_name: "", email: "", phone: "", requires_invoice: false, status: "active" };
 
 export default function PatientsClient({ userEmail }: { userEmail: string }) {
   const router = useRouter();
@@ -42,7 +44,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     setErrorMessage("");
     const { data, error } = await supabase
       .from("patients")
-      .select("id, full_name, email, phone, status, created_at")
+      .select("id, full_name, email, phone, requires_invoice, status, created_at")
       .order("full_name", { ascending: true });
 
     if (error) {
@@ -81,6 +83,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
       full_name: patient.full_name,
       email: patient.email ?? "",
       phone: patient.phone ?? "",
+      requires_invoice: patient.requires_invoice ?? false,
       status: patient.status,
     });
     setErrorMessage("");
@@ -98,6 +101,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
       full_name: form.full_name.trim(),
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
+      requires_invoice: form.requires_invoice,
       status: form.status,
     };
 
@@ -198,6 +202,13 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
                 <input id="patient-phone" type="tel" maxLength={40} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} autoComplete="tel" />
               </div>
               <div className="patient-field">
+                <label htmlFor="patient-requires-invoice">Emissão de nota fiscal</label>
+                <select id="patient-requires-invoice" value={form.requires_invoice ? "yes" : "no"} onChange={(event) => setForm({ ...form, requires_invoice: event.target.value === "yes" })}>
+                  <option value="no">Não é necessário</option>
+                  <option value="yes">Precisa emitir nota fiscal</option>
+                </select>
+              </div>
+              <div className="patient-field">
                 <label htmlFor="patient-status">Situação</label>
                 <select id="patient-status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as PatientForm["status"] })}>
                   <option value="active">Ativo</option>
@@ -229,12 +240,13 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
           ) : (
             <div className="patients-table-wrap">
               <table className="patients-table">
-                <thead><tr><th>Nome</th><th>Contato</th><th>Situação</th><th aria-label="Ações"></th></tr></thead>
+                <thead><tr><th>Nome</th><th>Contato</th><th>Nota fiscal</th><th>Situação</th><th aria-label="Ações"></th></tr></thead>
                 <tbody>
                   {filteredPatients.map((patient) => (
                     <tr key={patient.id}>
                       <td><strong>{patient.full_name}</strong></td>
                       <td><span>{patient.email || "—"}</span><small>{patient.phone || ""}</small></td>
+                      <td><span className={patient.requires_invoice ? "patient-status patient-status-active" : "patient-status"}>{patient.requires_invoice ? "Emitir nota" : "Não necessária"}</span></td>
                       <td><span className={patient.status === "active" ? "patient-status patient-status-active" : "patient-status"}>{patient.status === "active" ? "Ativo" : "Inativo"}</span></td>
                       <td><div className="patient-row-actions"><Link href={`/pacientes/${patient.id}/prontuario`} className="patients-icon-button" aria-label={`Abrir prontuário de ${patient.full_name}`} title="Prontuário"><BookOpenText size={15} /></Link><button type="button" className="patients-icon-button" onClick={() => startEdit(patient)} aria-label={`Editar ${patient.full_name}`}><Pencil size={15} /></button><button type="button" className="patients-icon-button patients-delete-button" onClick={() => void deletePatient(patient)} aria-label={`Excluir ${patient.full_name}`}><Trash2 size={15} /></button></div></td>
                     </tr>
