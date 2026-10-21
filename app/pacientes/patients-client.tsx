@@ -12,6 +12,11 @@ type Patient = {
   email: string | null;
   phone: string | null;
   requires_invoice: boolean;
+  billing_mode: "per_session" | "monthly";
+  default_session_price: number | string | null;
+  monthly_fee: number | string | null;
+  billing_due_day: number | null;
+  preferred_payment_method: "pix" | "cash" | "credit_card" | "debit_card" | "bank_transfer" | "other" | null;
   status: "active" | "inactive";
   created_at: string;
 };
@@ -21,10 +26,15 @@ type PatientForm = {
   email: string;
   phone: string;
   requires_invoice: boolean;
+  billing_mode: "per_session" | "monthly";
+  default_session_price: string;
+  monthly_fee: string;
+  billing_due_day: string;
+  preferred_payment_method: "" | "pix" | "cash" | "credit_card" | "debit_card" | "bank_transfer" | "other";
   status: "active" | "inactive";
 };
 
-const emptyForm: PatientForm = { full_name: "", email: "", phone: "", requires_invoice: false, status: "active" };
+const emptyForm: PatientForm = { full_name: "", email: "", phone: "", requires_invoice: false, billing_mode: "per_session", default_session_price: "", monthly_fee: "", billing_due_day: "", preferred_payment_method: "", status: "active" };
 
 export default function PatientsClient({ userEmail }: { userEmail: string }) {
   const router = useRouter();
@@ -44,7 +54,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     setErrorMessage("");
     const { data, error } = await supabase
       .from("patients")
-      .select("id, full_name, email, phone, requires_invoice, status, created_at")
+      .select("id, full_name, email, phone, requires_invoice, billing_mode, default_session_price, monthly_fee, billing_due_day, preferred_payment_method, status, created_at")
       .order("full_name", { ascending: true });
 
     if (error) {
@@ -84,6 +94,11 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
       email: patient.email ?? "",
       phone: patient.phone ?? "",
       requires_invoice: patient.requires_invoice ?? false,
+      billing_mode: patient.billing_mode ?? "per_session",
+      default_session_price: patient.default_session_price == null ? "" : String(patient.default_session_price).replace(".", ","),
+      monthly_fee: patient.monthly_fee == null ? "" : String(patient.monthly_fee).replace(".", ","),
+      billing_due_day: patient.billing_due_day == null ? "" : String(patient.billing_due_day),
+      preferred_payment_method: patient.preferred_payment_method ?? "",
       status: patient.status,
     });
     setErrorMessage("");
@@ -97,11 +112,26 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     setErrorMessage("");
     setNotice("");
 
+    const parseOptionalAmount = (value: string) => value.trim() ? Number(value.trim().replace(/\./g, "").replace(",", ".")) : null;
+    const defaultPrice = parseOptionalAmount(form.default_session_price);
+    const monthlyFee = parseOptionalAmount(form.monthly_fee);
+    if ((defaultPrice !== null && (!Number.isFinite(defaultPrice) || defaultPrice < 0)) ||
+        (form.billing_mode === "monthly" && (monthlyFee === null || !Number.isFinite(monthlyFee) || monthlyFee <= 0 || !form.billing_due_day || Number(form.billing_due_day) < 1 || Number(form.billing_due_day) > 28))) {
+      setErrorMessage("Confira os valores financeiros e, na cobrança mensal, informe uma mensalidade positiva e vencimento entre 1 e 28.");
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       full_name: form.full_name.trim(),
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       requires_invoice: form.requires_invoice,
+      billing_mode: form.billing_mode,
+      default_session_price: form.default_session_price.trim() ? Number(form.default_session_price.trim().replace(/\./g, "").replace(",", ".")) : null,
+      monthly_fee: form.billing_mode === "monthly" && form.monthly_fee.trim() ? Number(form.monthly_fee.trim().replace(/\./g, "").replace(",", ".")) : null,
+      billing_due_day: form.billing_mode === "monthly" && form.billing_due_day ? Number(form.billing_due_day) : null,
+      preferred_payment_method: form.preferred_payment_method || null,
       status: form.status,
     };
 
@@ -209,6 +239,34 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
                 </select>
               </div>
               <div className="patient-field">
+                <label htmlFor="patient-billing-mode">Modalidade de cobrança</label>
+                <select id="patient-billing-mode" value={form.billing_mode} onChange={(event) => setForm({ ...form, billing_mode: event.target.value as PatientForm["billing_mode"] })}>
+                  <option value="per_session">Por sessão</option>
+                  <option value="monthly">Mensal (valor fixo)</option>
+                </select>
+              </div>
+              <div className="patient-field">
+                <label htmlFor="patient-session-price">Valor padrão por sessão (R$)</label>
+                <input id="patient-session-price" inputMode="decimal" placeholder="150,00" value={form.default_session_price} onChange={(event) => setForm({ ...form, default_session_price: event.target.value })} />
+              </div>
+              {form.billing_mode === "monthly" && <>
+                <div className="patient-field">
+                  <label htmlFor="patient-monthly-fee">Mensalidade (R$) *</label>
+                  <input id="patient-monthly-fee" inputMode="decimal" placeholder="600,00" value={form.monthly_fee} onChange={(event) => setForm({ ...form, monthly_fee: event.target.value })} required />
+                </div>
+                <div className="patient-field">
+                  <label htmlFor="patient-billing-due-day">Dia de vencimento (1–28) *</label>
+                  <input id="patient-billing-due-day" type="number" min="1" max="28" value={form.billing_due_day} onChange={(event) => setForm({ ...form, billing_due_day: event.target.value })} required />
+                </div>
+              </>}
+              <div className="patient-field">
+                <label htmlFor="patient-preferred-payment">Forma de pagamento preferida</label>
+                <select id="patient-preferred-payment" value={form.preferred_payment_method} onChange={(event) => setForm({ ...form, preferred_payment_method: event.target.value as PatientForm["preferred_payment_method"] })}>
+                  <option value="">Não informada</option>
+                  <option value="pix">Pix</option><option value="cash">Dinheiro</option><option value="credit_card">Cartão de crédito</option><option value="debit_card">Cartão de débito</option><option value="bank_transfer">Transferência</option><option value="other">Outro</option>
+                </select>
+              </div>
+              <div className="patient-field">
                 <label htmlFor="patient-status">Situação</label>
                 <select id="patient-status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as PatientForm["status"] })}>
                   <option value="active">Ativo</option>
@@ -240,12 +298,13 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
           ) : (
             <div className="patients-table-wrap">
               <table className="patients-table">
-                <thead><tr><th>Nome</th><th>Contato</th><th>Nota fiscal</th><th>Situação</th><th aria-label="Ações"></th></tr></thead>
+                <thead><tr><th>Nome</th><th>Contato</th><th>Cobrança</th><th>Nota fiscal</th><th>Situação</th><th aria-label="Ações"></th></tr></thead>
                 <tbody>
                   {filteredPatients.map((patient) => (
                     <tr key={patient.id}>
                       <td><strong>{patient.full_name}</strong></td>
                       <td><span>{patient.email || "—"}</span><small>{patient.phone || ""}</small></td>
+                      <td><span className="patient-status">{patient.billing_mode === "monthly" ? "Mensal · " + Number(patient.monthly_fee ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Por sessão" + (patient.default_session_price != null ? " · " + Number(patient.default_session_price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "")}</span></td>
                       <td><span className={patient.requires_invoice ? "patient-status patient-status-active" : "patient-status"}>{patient.requires_invoice ? "Emitir nota" : "Não necessária"}</span></td>
                       <td><span className={patient.status === "active" ? "patient-status patient-status-active" : "patient-status"}>{patient.status === "active" ? "Ativo" : "Inativo"}</span></td>
                       <td><div className="patient-row-actions"><Link href={`/pacientes/${patient.id}/prontuario`} className="patients-icon-button" aria-label={`Abrir prontuário de ${patient.full_name}`} title="Prontuário"><BookOpenText size={15} /></Link><button type="button" className="patients-icon-button" onClick={() => startEdit(patient)} aria-label={`Editar ${patient.full_name}`}><Pencil size={15} /></button><button type="button" className="patients-icon-button patients-delete-button" onClick={() => void deletePatient(patient)} aria-label={`Excluir ${patient.full_name}`}><Trash2 size={15} /></button></div></td>
