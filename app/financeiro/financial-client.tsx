@@ -2,19 +2,19 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, CreditCard, Download, LogOut, Pencil, Plus, RefreshCw, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, CreditCard, Download, LogOut, Pencil, Plus, RefreshCw, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Kind = "income" | "expense";
 type Status = "pending" | "paid" | "cancelled";
 type PaymentMethod = "pix" | "cash" | "credit_card" | "debit_card" | "bank_transfer" | "other";
-type Patient = { id: string; full_name: string };
+type Patient = { id: string; full_name: string; requires_invoice: boolean; billing_mode: "per_session" | "monthly"; default_session_price: number | string | null; monthly_fee: number | string | null; preferred_payment_method: PaymentMethod | null };
 type Transaction = {
   id: string; patient_id: string | null; appointment_id: string | null; kind: Kind;
   category: string; description: string; amount: number | string; status: Status;
   due_date: string | null; paid_at: string | null; payment_method: PaymentMethod | null;
-  created_at: string; updated_at: string;
+  created_at: string; updated_at: string; generated_from_appointment: boolean; generated_from_monthly: boolean; billing_period: string | null;
 };
 type FormData = {
   kind: Kind; patient_id: string; category: string; description: string;
@@ -48,6 +48,7 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingMonthly, setGeneratingMonthly] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
@@ -64,10 +65,10 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
     const nextMonthDay = dateKey(end);
     const [transactionResult, patientResult] = await Promise.all([
       supabase.from("financial_transactions")
-        .select("id, patient_id, appointment_id, kind, category, description, amount, status, due_date, paid_at, payment_method, created_at, updated_at")
+        .select("id, patient_id, appointment_id, kind, category, description, amount, status, due_date, paid_at, payment_method, created_at, updated_at, generated_from_appointment, generated_from_monthly, billing_period")
         .or(`and(due_date.gte.${firstDay},due_date.lt.${nextMonthDay}),and(due_date.is.null,created_at.gte.${startIso},created_at.lt.${endIso})`)
         .order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
-      supabase.from("patients").select("id, full_name").eq("status", "active").order("full_name"),
+      supabase.from("patients").select("id, full_name, requires_invoice, billing_mode, default_session_price, monthly_fee, preferred_payment_method").eq("status", "active").order("full_name"),
     ]);
     if (transactionResult.error || patientResult.error) {
       console.error("MenteHub financeiro: falha ao carregar dados", { transaction: transactionResult.error, patients: patientResult.error });
@@ -159,9 +160,10 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
     setNotice("Lançamento excluído."); await loadData();
   }
   function exportCsv() {
-    const header = ["Tipo","Descrição","Categoria","Paciente","Valor","Status","Vencimento","Forma de pagamento"];
+    const header = ["Tipo","Descrição","Categoria","Paciente","Nota fiscal","Valor","Status","Vencimento","Forma de pagamento"];
     const rows = visibleTransactions.map((item) => [
       kindLabels[item.kind], item.description, item.category, patientNames.get(item.patient_id ?? "") ?? "",
+      patients.find((patient) => patient.id === item.patient_id)?.requires_invoice ? "Necessária" : item.patient_id ? "Não indicada" : "",
       Number(item.amount).toFixed(2).replace(".", ","), statusLabels[item.status],
       item.due_date ?? item.created_at.slice(0,10), item.payment_method ? methodLabels[item.payment_method] : "",
     ]);
@@ -170,6 +172,26 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
     const link = document.createElement("a"); link.href = url; link.download = `mentehub-financeiro-${month}.csv`;
     document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
   }
+  async function generateMonthlyReceivables() {
+    setGeneratingMonthly(true);
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const { data, error } = await supabase.rpc("generate_monthly_patient_receivables", { target_month: month + "-01" });
+      if (error) throw error;
+      const count = Number(data ?? 0);
+      setNotice(count === 0
+        ? "Nenhuma mensalidade nova ou pendente para gerar. Verifique se há pacientes com cobrança mensal e consultas realizadas no mês."
+        : "Cobranças mensais geradas/atualizadas: " + count + ". Lançamentos já pagos foram preservados.");
+      await loadData();
+    } catch (error) {
+      console.error("MenteHub financeiro: falha ao gerar mensalidades", error);
+      setErrorMessage(error instanceof Error ? error.message : "Não foi possível gerar as cobranças mensais. Confirme se a migração financeira foi aplicada.");
+    } finally {
+      setGeneratingMonthly(false);
+    }
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) { setErrorMessage("Não foi possível encerrar a sessão."); return; }
@@ -185,7 +207,7 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
       <Link className="patients-back" href="/"><ArrowLeft size={15}/> Visão geral</Link>
       <div className="patients-heading">
         <div><p className="auth-eyebrow">GESTÃO DO CONSULTÓRIO</p><h1>Financeiro</h1><p className="auth-description">Acompanhe receitas, despesas, pendências e saldo dos seus lançamentos.</p></div>
-        <div className="finance-actions"><button type="button" className="button button-secondary" onClick={exportCsv} disabled={visibleTransactions.length===0}><Download size={16}/> Exportar CSV</button><button type="button" className="button button-primary" onClick={() => startCreate("income")}><Plus size={16}/> Novo lançamento</button></div>
+        <div className="finance-actions"><button type="button" className="button button-secondary" onClick={()=>void generateMonthlyReceivables()} disabled={generatingMonthly}><CalendarDays size={16}/>{generatingMonthly ? "Gerando…" : "Gerar mensalidades"}</button><button type="button" className="button button-secondary" onClick={exportCsv} disabled={visibleTransactions.length===0}><Download size={16}/> Exportar CSV</button><button type="button" className="button button-primary" onClick={() => startCreate("income")}><Plus size={16}/> Novo lançamento</button></div>
       </div>
       <div className="finance-toolbar"><label>Mês de referência<input type="month" value={month} onChange={(e)=>setMonth(e.target.value)}/></label><button type="button" className="patients-quiet-button" onClick={()=>void loadData()}><RefreshCw size={15}/> Atualizar</button></div>
       {notice && <div className="patients-notice" role="status">{notice}<button type="button" onClick={()=>setNotice("")} aria-label="Fechar aviso"><X size={15}/></button></div>}
@@ -206,15 +228,19 @@ export default function FinancialClient({ userEmail }: { userEmail: string }) {
           <div className="patient-field"><label htmlFor="finance-description">Descrição</label><input id="finance-description" value={form.description} maxLength={180} onChange={(e)=>setForm({...form,description:e.target.value})} required/></div>
           <div className="patient-field"><label htmlFor="finance-amount">Valor (R$)</label><input id="finance-amount" inputMode="decimal" placeholder="150,00" value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})} required/></div>
           <div className="patient-field"><label htmlFor="finance-date">Vencimento / data</label><input id="finance-date" type="date" value={form.due_date} onChange={(e)=>setForm({...form,due_date:e.target.value})}/></div>
-          <div className="patient-field"><label htmlFor="finance-patient">Paciente (opcional)</label><select id="finance-patient" value={form.patient_id} onChange={(e)=>setForm({...form,patient_id:e.target.value})}><option value="">Sem paciente vinculado</option>{patients.map((p)=><option key={p.id} value={p.id}>{p.full_name}</option>)}</select></div>
+          <div className="patient-field"><label htmlFor="finance-patient">Paciente (opcional)</label><select id="finance-patient" value={form.patient_id} onChange={(e)=>{
+            const patient = patients.find((p)=>p.id===e.target.value);
+            const suggestedAmount = patient ? (patient.billing_mode === "monthly" ? patient.monthly_fee : patient.default_session_price) : null;
+            setForm({...form,patient_id:e.target.value,...(!editingId && form.kind === "income" && suggestedAmount != null ? {amount:String(suggestedAmount).replace(".",",")} : {}),...(!editingId && patient?.preferred_payment_method ? {payment_method:patient.preferred_payment_method} : {})});
+          }}><option value="">Sem paciente vinculado</option>{patients.map((p)=><option key={p.id} value={p.id}>{p.full_name}</option>)}</select></div>
           <div className="patient-field"><label htmlFor="finance-method">Forma de pagamento</label><select id="finance-method" value={form.payment_method} onChange={(e)=>setForm({...form,payment_method:e.target.value as PaymentMethod | ""})}><option value="">Não informada</option>{(Object.keys(methodLabels) as PaymentMethod[]).map((method)=><option key={method} value={method}>{methodLabels[method]}</option>)}</select></div>
         </div>
         <div className="patient-form-actions"><button type="button" className="button button-secondary" onClick={()=>setShowForm(false)}>Cancelar</button><button type="submit" className="button button-primary" disabled={saving}>{saving?"Salvando…":editingId?"Salvar alterações":"Registrar lançamento"}</button></div>
       </form>}
       <section className="finance-table-wrap">
         {loading ? <p className="finance-empty">Carregando lançamentos…</p> : visibleTransactions.length===0 ? <div className="finance-empty"><Wallet size={28}/><strong>Nenhum lançamento encontrado</strong><span>Registre uma receita ou despesa para começar, ou altere o mês/filtros.</span><button className="button button-primary" onClick={()=>startCreate("income")}><Plus size={15}/> Registrar primeira receita</button></div> :
-        <div className="finance-table-scroll"><table className="finance-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Paciente</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
-          {visibleTransactions.map((item)=><tr key={item.id}><td><strong>{item.description}</strong><small>{item.category}{item.payment_method ? " · "+methodLabels[item.payment_method] : ""}</small></td><td><span className={item.kind==="income"?"finance-kind income":"finance-kind expense"}>{kindLabels[item.kind]}</span></td><td>{patientNames.get(item.patient_id ?? "") ?? "—"}</td><td>{(item.due_date ?? item.created_at.slice(0,10)).split("-").reverse().join("/")}</td><td className="finance-amount">{money(Number(item.amount))}</td><td><span className={"finance-status "+item.status}>{statusLabels[item.status]}</span></td><td><div className="finance-row-actions"><button type="button" title="Editar" aria-label={"Editar "+item.description} onClick={()=>startEdit(item)}><Pencil size={15}/></button>{item.status!=="paid" && item.status!=="cancelled" && <button type="button" title="Marcar pago/recebido" aria-label={"Marcar pago "+item.description} onClick={()=>void updateStatus(item,"paid")}><CheckCircle2 size={15}/></button>}{item.status!=="cancelled" && <button type="button" title="Cancelar lançamento" aria-label={"Cancelar "+item.description} onClick={()=>void updateStatus(item,"cancelled")}><X size={15}/></button>}<button type="button" title="Excluir" aria-label={"Excluir "+item.description} onClick={()=>void deleteTransaction(item)}><Trash2 size={15}/></button></div></td></tr>)}
+        <div className="finance-table-scroll"><table className="finance-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Paciente</th><th>Nota fiscal</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+          {visibleTransactions.map((item)=><tr key={item.id}><td><strong>{item.description}</strong><small>{item.category}{item.payment_method ? " · "+methodLabels[item.payment_method] : ""}</small></td><td><span className={item.kind==="income"?"finance-kind income":"finance-kind expense"}>{kindLabels[item.kind]}</span></td><td>{patientNames.get(item.patient_id ?? "") ?? "—"}</td><td>{item.patient_id ? (patients.find((patient)=>patient.id===item.patient_id)?.requires_invoice ? "Necessária" : "Não indicada") : "—"}</td><td>{(item.due_date ?? item.created_at.slice(0,10)).split("-").reverse().join("/")}</td><td className="finance-amount">{money(Number(item.amount))}</td><td><span className={"finance-status "+item.status}>{statusLabels[item.status]}</span></td><td><div className="finance-row-actions">{!item.generated_from_appointment && !item.generated_from_monthly && <button type="button" title="Editar" aria-label={"Editar "+item.description} onClick={()=>startEdit(item)}><Pencil size={15}/></button>}{item.status!=="paid" && item.status!=="cancelled" && <button type="button" title="Marcar pago/recebido" aria-label={"Marcar pago "+item.description} onClick={()=>void updateStatus(item,"paid")}><CheckCircle2 size={15}/></button>}{item.status!=="cancelled" && <button type="button" title="Cancelar lançamento" aria-label={"Cancelar "+item.description} onClick={()=>void updateStatus(item,"cancelled")}><X size={15}/></button>}{!item.generated_from_appointment && !item.generated_from_monthly && <button type="button" title="Excluir" aria-label={"Excluir "+item.description} onClick={()=>void deleteTransaction(item)}><Trash2 size={15}/></button>}</div></td></tr>)}
         </tbody></table></div>}
       </section>
       <p className="finance-disclaimer">Controle administrativo. Confira os lançamentos com seus comprovantes; os valores apresentados não substituem a conciliação bancária ou a orientação contábil.</p>
