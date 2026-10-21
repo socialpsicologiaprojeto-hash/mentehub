@@ -116,7 +116,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     const defaultPrice = parseOptionalAmount(form.default_session_price);
     const monthlyFee = parseOptionalAmount(form.monthly_fee);
     if ((defaultPrice !== null && (!Number.isFinite(defaultPrice) || defaultPrice < 0)) ||
-        (form.billing_mode === "monthly" && (monthlyFee === null || !Number.isFinite(monthlyFee) || monthlyFee <= 0 || !form.billing_due_day || Number(form.billing_due_day) < 1 || Number(form.billing_due_day) > 28))) {
+        (form.billing_mode === "monthly" && (monthlyFee === null || !Number.isFinite(monthlyFee) || monthlyFee <= 0 || !form.billing_due_day || !Number.isInteger(Number(form.billing_due_day)) || Number(form.billing_due_day) < 1 || Number(form.billing_due_day) > 28))) {
       setErrorMessage("Confira os valores financeiros e, na cobrança mensal, informe uma mensalidade positiva e vencimento entre 1 e 28.");
       setSaving(false);
       return;
