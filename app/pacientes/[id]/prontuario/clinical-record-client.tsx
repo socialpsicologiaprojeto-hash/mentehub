@@ -68,6 +68,43 @@ function formatDate(value: string) {
   });
 }
 
+function formatDictatedText(value: string): string {
+  const punctuationCommands: Array<[RegExp, string]> = [
+    [/\\bponto e vírgula\\b/gi, ";"],
+    [/\\bponto de interrogação\\b/gi, "?"],
+    [/\\bponto de exclamação\\b/gi, "!"],
+    [/\\bponto final\\b/gi, "."],
+    [/\\bdois pontos\\b/gi, ":"],
+    [/\\bvírgula\\b/gi, ","],
+    [/\\bvirgula\\b/gi, ","],
+    [/\\bnovo parágrafo\\b/gi, "\\n\\n"],
+    [/\\bnova linha\\b/gi, "\\n"],
+  ];
+
+  let formatted = value;
+  for (const [command, punctuation] of punctuationCommands) {
+    formatted = formatted.replace(command, punctuation);
+  }
+
+  formatted = formatted
+    .replace(/[ \\t]+/g, " ")
+    .replace(/[ \\t]*([,;:!?])/g, "$1")
+    .replace(/([,;:!?])(?=\\S)/g, "$1 ")
+    .replace(/([.!?])(?=[A-Za-zÀ-ÿ])/g, "$1 ")
+    .replace(/[ \\t]+\\n/g, "\\n")
+    .replace(/\\n[ \\t]+/g, "\\n")
+    .replace(/\\n{3,}/g, "\\n\\n")
+    .trim();
+
+  formatted = formatted.replace(/(^|[.!?]\\s+|\\n+)([a-zà-ÿ])/giu, (_, prefix: string, letter: string) =>
+    prefix + letter.toLocaleUpperCase("pt-BR")
+  );
+  formatted = formatted.replace(/[,:;]+$/g, "").trimEnd();
+
+  if (formatted && !/[.!?…]$/.test(formatted)) formatted += ".";
+  return formatted;
+}
+
 export default function ClinicalRecordClient({
   patientId,
   patientName,
@@ -96,6 +133,8 @@ export default function ClinicalRecordClient({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const userStoppedDictationRef = useRef(false);
   const dictationErrorRef = useRef(false);
+  const dictationStartLengthRef = useRef(0);
+  const dictationHasResultRef = useRef(false);
 
   const loadNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -226,6 +265,8 @@ export default function ClinicalRecordClient({
     setDictationMessage("Solicitação enviada; aguardando o serviço de reconhecimento de voz…");
     userStoppedDictationRef.current = false;
     dictationErrorRef.current = false;
+    dictationStartLengthRef.current = content.length;
+    dictationHasResultRef.current = false;
     let recognition: SpeechRecognitionLike;
     try {
       recognition = new SpeechRecognition();
@@ -247,6 +288,7 @@ export default function ClinicalRecordClient({
         if (result?.isFinal && result[0]?.transcript.trim()) finalized.push(result[0].transcript.trim());
       }
       if (finalized.length) {
+        dictationHasResultRef.current = true;
         const transcript = finalized.join(" ");
         setContent((current) => {
           const separator = current && !/\s$/.test(current) ? " " : "";
@@ -275,8 +317,19 @@ export default function ClinicalRecordClient({
     recognition.onend = () => {
       setDictating(false);
       if (recognitionRef.current === recognition) recognitionRef.current = null;
-      if (userStoppedDictationRef.current && !dictationErrorRef.current) {
-        setDictationMessage("Ditado parado. Revise o texto antes de salvar.");
+      if (dictationErrorRef.current) return;
+
+      if (dictationHasResultRef.current) {
+        setContent((current) => {
+          const prefix = current.slice(0, dictationStartLengthRef.current);
+          const dictated = current.slice(dictationStartLengthRef.current);
+          const formatted = formatDictatedText(dictated);
+          const separator = prefix && formatted && !/\\s$/.test(prefix) ? " " : "";
+          return `${prefix}${separator}${formatted}`;
+        });
+        setDictationMessage("Ditado finalizado. A pontuação foi aplicada automaticamente; revise o texto antes de salvar.");
+      } else if (userStoppedDictationRef.current) {
+        setDictationMessage("Ditado encerrado, mas nenhum texto foi reconhecido. Confira o microfone e tente novamente.");
       }
     };
     recognitionRef.current = recognition;
