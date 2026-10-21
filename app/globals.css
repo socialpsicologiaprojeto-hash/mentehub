@@ -146,3 +146,39 @@
 .clinical-anamnesis-snapshot{margin-top:10px}
 .clinical-anamnesis-snapshot p{margin:7px 0;font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:#56655a}
 @media(max-width:760px){.clinical-toolbar-actions{width:100%;justify-content:flex-start}.clinical-anamnesis-heading-actions{align-items:flex-start;flex-direction:column}}
+
+/* Financial module */
+.finance-actions,.finance-toolbar,.finance-filters,.finance-list-heading,.finance-row-actions,.finance-summary{display:flex;gap:12px;align-items:center}
+.finance-actions{flex-wrap:wrap}
+.finance-toolbar{justify-content:space-between;margin:22px 0;flex-wrap:wrap}
+.finance-toolbar label,.finance-filters label{display:flex;align-items:center;gap:9px;color:var(--muted,#667085);font-size:13px}
+.finance-toolbar input,.finance-filters select{border:1px solid var(--border,#e4e7ec);border-radius:10px;background:white;padding:9px 11px;color:var(--text,#344054);font:inherit}
+.finance-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:18px 0 30px;align-items:stretch}
+.finance-stat{border:1px solid var(--border,#e4e7ec);border-radius:16px;padding:18px;background:white;display:flex;flex-direction:column;gap:10px;min-width:0}
+.finance-stat>span{display:flex;gap:8px;align-items:center;color:var(--muted,#667085);font-size:13px}
+.finance-stat>strong{font-size:clamp(18px,2vw,26px);letter-spacing:-.04em;color:var(--text,#344054);overflow-wrap:anywhere}
+.finance-stat>small,.finance-table td small{color:var(--muted,#667085);font-size:12px}
+.finance-balance{background:#f6faf7}
+.finance-list-heading{justify-content:space-between;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap}
+.finance-list-heading h2{margin:0 0 4px;font-size:20px}
+.finance-list-heading p{margin:0;color:var(--muted,#667085);font-size:13px}
+.finance-table-wrap{background:white;border:1px solid var(--border,#e4e7ec);border-radius:16px;overflow:hidden}
+.finance-table-scroll{overflow-x:auto}
+.finance-table{width:100%;border-collapse:collapse;min-width:850px}
+.finance-table th,.finance-table td{padding:14px 13px;text-align:left;border-bottom:1px solid #eef0f2;font-size:13px;vertical-align:middle}
+.finance-table th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#667085;background:#fafbfc}
+.finance-table td strong,.finance-table td small{display:block}
+.finance-table td small{margin-top:4px}
+.finance-amount{font-weight:650;white-space:nowrap}
+.finance-kind,.finance-status{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:600;white-space:nowrap}
+.finance-kind.income{background:#e9f7ef;color:#21734a}.finance-kind.expense{background:#fff0ed;color:#a13f30}
+.finance-status.pending{background:#fff6df;color:#875c08}.finance-status.paid{background:#e9f7ef;color:#21734a}.finance-status.cancelled{background:#f1f2f4;color:#667085}
+.finance-row-actions{gap:4px;white-space:nowrap}
+.finance-row-actions button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid #e4e7ec;background:white;border-radius:8px;color:#475467;cursor:pointer}
+.finance-row-actions button:hover{background:#f8fafc}
+.finance-empty{min-height:180px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;padding:30px;text-align:center;color:#667085}
+.finance-empty strong{color:#344054}.finance-empty span{font-size:13px;max-width:460px}.finance-empty .button{margin-top:5px}
+.finance-disclaimer{font-size:12px;color:#667085;margin:14px 0 0;line-height:1.6}
+.patient-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}
+@media(max-width:1000px){.finance-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.finance-summary{grid-template-columns:1fr 1fr;gap:8px}.finance-stat{padding:12px}.finance-stat>span{font-size:11px}.finance-toolbar label{width:100%;justify-content:space-between}.finance-toolbar input{max-width:170px}.finance-actions{width:100%}.finance-actions .button{flex:1;justify-content:center}}
