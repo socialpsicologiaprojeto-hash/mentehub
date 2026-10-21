@@ -112,7 +112,7 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
     setErrorMessage("");
     setNotice("");
 
-    const parseOptionalAmount = (value: string) => value.trim() ? Number(value.trim().replace(/\./g, "").replace(",", ".")) : null;
+    const parseOptionalAmount = (value: string) => { const normalized = value.trim().includes(",") ? value.trim().replace(/\./g, "").replace(",", ".") : value.trim(); return value.trim() ? Number(normalized) : null; };
     const defaultPrice = parseOptionalAmount(form.default_session_price);
     const monthlyFee = parseOptionalAmount(form.monthly_fee);
     if ((defaultPrice !== null && (!Number.isFinite(defaultPrice) || defaultPrice < 0)) ||
@@ -128,8 +128,8 @@ export default function PatientsClient({ userEmail }: { userEmail: string }) {
       phone: form.phone.trim() || null,
       requires_invoice: form.requires_invoice,
       billing_mode: form.billing_mode,
-      default_session_price: form.default_session_price.trim() ? Number(form.default_session_price.trim().replace(/\./g, "").replace(",", ".")) : null,
-      monthly_fee: form.billing_mode === "monthly" && form.monthly_fee.trim() ? Number(form.monthly_fee.trim().replace(/\./g, "").replace(",", ".")) : null,
+      default_session_price: defaultPrice,
+      monthly_fee: form.billing_mode === "monthly" ? monthlyFee : null,
       billing_due_day: form.billing_mode === "monthly" && form.billing_due_day ? Number(form.billing_due_day) : null,
       preferred_payment_method: form.preferred_payment_method || null,
       status: form.status,
