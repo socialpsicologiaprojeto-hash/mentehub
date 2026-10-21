@@ -1,45 +1,41 @@
-"use client";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { CalendarDays, CreditCard, Heart, Settings, Users } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Activity, ArrowRight, Bell, CalendarDays, Check, ChevronDown, CreditCard, FileImage, Heart, Home, LayoutGrid, MessageCircle, Palette, Plus, Search, Settings2, ShieldCheck, Sparkles, Users, WandSparkles } from "lucide-react";
+export const dynamic = "force-dynamic";
 
-const groups = [
-  { title: "ESPAÇO DE TRABALHO", items: [{name:"Visão geral",icon:Home},{name:"Estúdio criativo",icon:Sparkles},{name:"Identidade visual",icon:Palette},{name:"Biblioteca de artes",icon:FileImage}] },
-  { title: "CONSULTÓRIO", items: [{name:"Agenda",icon:CalendarDays},{name:"Pacientes",icon:Users},{name:"Financeiro",icon:CreditCard},{name:"Mensagens",icon:MessageCircle}] }
-];
-const ideas = [
-  { tag:"PSICOEDUCAÇÃO", title:"Nem todo pensamento é um fato", kind:"Carrossel · 5 páginas", color:"sage" },
-  { tag:"AUTOCUIDADO", title:"Pequenos limites também são cuidado", kind:"Post único · Instagram", color:"peach" },
-  { tag:"REFLEXÃO", title:"Você não precisa dar conta de tudo", kind:"Stories · 3 telas", color:"lavender" }
-];
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: auth, error } = await supabase.auth.getUser();
+  if (error || !auth.user) redirect("/login");
 
-export default function HomePage() {
-  const router = useRouter();
-  const [active,setActive] = useState("Visão geral");
-  const [topic,setTopic] = useState("Ansiedade e autocuidado");
-  const [format,setFormat] = useState("Carrossel");
-  const [notice,setNotice] = useState("");
-  return <main className="app-shell">
-    <aside className="sidebar">
-      <a className="brand" href="#"><span className="brand-mark"><Heart size={20}/></span><span><strong>mentehub</strong><small>seu consultório em harmonia</small></span></a>
-      <button className="workspace-switch" onClick={()=>setNotice("Espaço de trabalho demonstrativo.")}><span className="avatar avatar-brand">MC</span><span className="workspace-copy"><strong>Mariana Costa</strong><small>Psicologia clínica</small></span><ChevronDown size={15}/></button>
-      <nav className="nav">{groups.map(g=><div className="nav-group" key={g.title}><p className="nav-heading">{g.title}</p>{g.items.map(item=><button key={item.name} className={active===item.name?"nav-link active":"nav-link"} onClick={()=>{setActive(item.name);if(item.name==="Pacientes"){router.push("/pacientes");return;}if(item.name==="Agenda"){router.push("/agenda");return;}if(item.name==="Financeiro"){router.push("/financeiro");return;}if(item.name!=="Visão geral")setNotice(item.name+" — módulo em desenvolvimento.");}}><item.icon size={17}/><span>{item.name}</span>{item.name==="Estúdio criativo"&&<span className="ai-badge">IA</span>}</button>)}</div>)}</nav>
-      <div className="sidebar-bottom"><div className="plan-card"><div className="plan-icon"><Sparkles size={16}/></div><strong>Sua marca, com intenção.</strong><p>Um espaço para deixar sua comunicação mais leve e consistente.</p><button onClick={()=>setActive("Identidade visual")}>Personalizar marca <ArrowRight size={14}/></button></div><button className="nav-link" onClick={()=>setNotice("Central de ajuda em breve.")}><Settings2 size={17}/><span>Configurações</span></button><div className="profile"><span className="avatar">MC</span><span className="workspace-copy"><strong>Mariana Costa</strong><small>Plano Essencial · Demo</small></span></div></div>
-    </aside>
-    <section className="main-area">
-      <header className="topbar"><div className="breadcrumb">Seu espaço <span>/</span> <strong>{active}</strong></div><div className="top-actions"><label className="search-box"><Search size={16}/><input placeholder="Buscar no MenteHub" aria-label="Buscar no MenteHub"/></label><button className="icon-button" aria-label="Notificações" onClick={()=>setNotice("Você está em dia. Nenhuma notificação nova.")}><Bell size={18}/></button><span className="avatar">MC</span></div></header>
-      <div className="content">
-        <div className="welcome-row"><div><p className="eyebrow"><span className="eyebrow-dot"/> SEU ESPAÇO PROFISSIONAL</p><h1>Um bom dia começa <em>com espaço.</em></h1><p className="subheading">Olá, Mariana. Vamos cuidar um pouquinho do seu consultório?</p></div><button className="button button-primary" onClick={()=>{setActive("Estúdio criativo");setNotice("Escolha um tema e formato para preparar seu próximo conteúdo.")}}><Plus size={17}/> Criar conteúdo</button></div>
-        {notice&&<div className="notice" role="status"><Check size={16}/><p>{notice}</p><button onClick={()=>setNotice("")} aria-label="Fechar">×</button></div>}
-        <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Consultas esta semana</span><span className="stat-icon green"><CalendarDays size={17}/></span></div><div className="stat-value">08 <small>agendadas</small></div><div className="stat-foot">• Próxima consulta às 14:30</div></article><article className="stat-card"><div className="stat-top"><span>Conteúdos criados</span><span className="stat-icon lilac"><FileImage size={17}/></span></div><div className="stat-value">12 <small>neste mês</small></div><div className="stat-foot">• 3 rascunhos aguardando você</div></article><article className="stat-card"><div className="stat-top"><span>Receita registrada</span><span className="stat-icon peach-icon"><CreditCard size={17}/></span></div><div className="stat-value">R$ 2.480<small>,00</small></div><div className="stat-foot">• Dados ilustrativos de demonstração</div></article></div>
-        <section className="studio-panel"><div className="studio-copy"><div className="section-kicker"><WandSparkles size={15}/> SEU ESTÚDIO CRIATIVO</div><h2>Suas ideias, com a <em>sua identidade.</em></h2><p>Conte o que quer comunicar. Organize a ideia para combinar com o jeito da sua marca.</p><label className="field-label" htmlFor="topic">Qual é o tema do seu próximo conteúdo?</label><input id="topic" className="topic-input" value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Ex.: ansiedade, autoestima, limites…"/><label className="field-label">Escolha um formato</label><div className="format-options">{["Post único","Carrossel","Stories"].map(f=><button key={f} onClick={()=>setFormat(f)} className={format===f?"format-option selected":"format-option"}>{f==="Carrossel"?<LayoutGrid size={15}/>:f==="Stories"?<Activity size={15}/>:<FileImage size={15}/>} {f}</button>)}</div><button className="button button-primary generate-button" onClick={()=>setNotice("Briefing preparado: “"+topic+"” · "+format+". A geração por IA será ativada após configurar o provedor.")}><Sparkles size={16}/> Preparar meu conteúdo <ArrowRight size={16}/></button><p className="microcopy"><ShieldCheck size={13}/> Você revisa tudo antes de publicar.</p></div>
-          <div className="studio-art"><div className="art-window"><div className="art-toolbar"><span/><span/><span/><small>PRÉVIA DA SUA MARCA</small></div><div className="art-canvas"><div className="art-leaf leaf-one"/><div className="art-leaf leaf-two"/><div className="art-copy"><span className="art-overline">UM CONVITE À PAUSA</span><p>Você também merece<br/><em>o cuidado</em> que oferece.</p><span className="art-rule"/><small>PSI. MARIANA COSTA</small></div><div className="art-seal">mc</div></div><div className="art-caption"><span>● Paleta natural</span><span>01 / 03</span></div></div><div className="floating-note"><span className="note-check"><Check size={14}/></span><span><strong>Identidade consistente</strong><small>Cores · Tipografia · Tom de voz</small></span></div></div>
-        </section>
-        <section className="templates-section"><div className="section-heading"><div><p className="eyebrow">INSPIRAÇÃO PARA VOCÊ</p><h2>Comece por uma ideia</h2><p className="section-desc">Modelos para adaptar ao seu jeito de comunicar.</p></div><button className="text-button" onClick={()=>{setActive("Biblioteca de artes");setNotice("Biblioteca completa em desenvolvimento.")}}>Ver biblioteca <ArrowRight size={15}/></button></div><div className="template-grid">{ideas.map((t,i)=><article className="template-card" key={t.title}><div className={"template-preview "+t.color}><div className="template-brand">m<span>.</span></div><span className="template-category">{t.tag}</span><p>{t.title}</p><span className="template-footer">um espaço para você <span>↗</span></span><span className="template-index">0{i+1}</span></div><div className="template-meta"><div><strong>{t.title}</strong><small>{t.kind}</small></div><button aria-label={"Usar modelo "+t.title} onClick={()=>{setTopic(t.title);setFormat(t.kind.split(" · ")[0]);setNotice("Modelo selecionado. Revise tema e formato no estúdio.");window.scrollTo({top:0,behavior:"smooth"})}}><ArrowRight size={16}/></button></div></article>)}</div></section>
-        <section className="bottom-grid"><article className="bottom-card"><div className="bottom-icon"><CalendarDays size={18}/></div><div><h3>Sua agenda, com leveza</h3><p>Organize os horários e a rotina do consultório em um só lugar.</p><button onClick={()=>router.push("/agenda")}>Explorar agenda <ArrowRight size={14}/></button></div></article><article className="bottom-card"><div className="bottom-icon peach-icon"><MessageCircle size={18}/></div><div><h3>Presença também é cuidado</h3><p>Prepare lembretes e mensagens administrativas com respeito.</p><button onClick={()=>{setActive("Mensagens");setNotice("A integração oficial com WhatsApp ainda não está conectada.")}}>Conhecer mensagens <ArrowRight size={14}/></button></div></article></section>
-        <footer className="footer"><span>mentehub · Feito para cuidar de quem cuida.</span><span>Protótipo de produto · Dados ilustrativos</span></footer>
-      </div>
-    </section>
-  </main>;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  const displayName = profile?.full_name?.trim() || auth.user.email?.split("@")[0] || "Profissional";
+
+  return (
+    <main className="auth-page">
+      <section className="auth-card" style={{ maxWidth: 720 }}>
+        <Link className="auth-brand" href="/" aria-label="MenteHub início">
+          <span className="auth-brand-mark"><Heart size={20} /></span>
+          <span><strong>mentehub</strong><small>seu consultório em harmonia</small></span>
+        </Link>
+        <p className="auth-eyebrow">SEU ESPAÇO PROFISSIONAL</p>
+        <h1>Olá, {displayName}.</h1>
+        <p className="auth-description">Acesse os módulos disponíveis do seu consultório.</p>
+        <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+          <Link className="button button-primary" href="/agenda"><CalendarDays size={17} /> Agenda</Link>
+          <Link className="button button-primary" href="/pacientes"><Users size={17} /> Pacientes e prontuários</Link>
+          <Link className="button button-primary" href="/financeiro"><CreditCard size={17} /> Financeiro</Link>
+          <Link className="button" href="/perfil"><Settings size={17} /> Meu perfil profissional</Link>
+        </div>
+        <p className="auth-security" style={{ marginTop: 24 }}>Conectado como {auth.user.email}. Os módulos demonstrativos e ainda indisponíveis foram retirados desta página.</p>
+      </section>
+    </main>
+  );
 }
