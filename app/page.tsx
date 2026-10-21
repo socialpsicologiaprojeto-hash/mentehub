@@ -1,5 +1,3 @@
-"use server";
-
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -16,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 function initials(name: string) {
-  const parts = name.trim().split(/\\s+/).filter(Boolean);
+  const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "P";
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
