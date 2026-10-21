@@ -315,3 +315,140 @@ html[data-theme="system"] .button-primary{background:var(--green);color:var(--bu
 html[data-theme="system"] .finance-table{color:var(--ink)}html[data-theme="system"] .finance-table th{background:var(--surface-soft);color:var(--muted)}html[data-theme="system"] .finance-table th,html[data-theme="system"] .finance-table td{border-color:var(--line)}
 html[data-theme="system"] .finance-empty{color:var(--muted)}html[data-theme="system"] .finance-empty strong{color:var(--ink)}
 }
+
+
+/* Correção de contraste: tema escuro */
+html[data-theme="dark"] .welcome-row h1 em,
+html[data-theme="dark"] .studio-copy h2 em,
+html[data-theme="dark"] .section-kicker,
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .text-button,
+html[data-theme="dark"] .auth-back,
+html[data-theme="dark"] .patients-back,
+html[data-theme="dark"] .clinical-history-heading,
+html[data-theme="dark"] .clinical-revision strong,
+html[data-theme="dark"] .agenda-appointment-time strong,
+html[data-theme="dark"] .agenda-appointment-main > strong,
+html[data-theme="dark"] .clinical-note-date,
+html[data-theme="dark"] .clinical-note-full,
+html[data-theme="dark"] .clinical-anamnesis-snapshot p {
+  color: #b6e3c2;
+}
+html[data-theme="dark"] .field-label,
+html[data-theme="dark"] .auth-form label,
+html[data-theme="dark"] .patient-field label,
+html[data-theme="dark"] .clinical-detail-heading h2,
+html[data-theme="dark"] .clinical-revision p,
+html[data-theme="dark"] .agenda-appointment-main > span,
+html[data-theme="dark"] .agenda-appointment-main > small,
+html[data-theme="dark"] .agenda-appointment-controls select {
+  color: #d5e2d9;
+}
+html[data-theme="dark"] .finance-kind.income,
+html[data-theme="dark"] .finance-status.paid,
+html[data-theme="dark"] .agenda-status-confirmed {
+  background: #254b37;
+  color: #b6f0cb;
+}
+html[data-theme="dark"] .finance-kind.expense,
+html[data-theme="dark"] .agenda-status-cancelled {
+  background: #512f2b;
+  color: #ffd0c8;
+}
+html[data-theme="dark"] .finance-status.pending,
+html[data-theme="dark"] .agenda-status-scheduled {
+  background: #51452a;
+  color: #ffe3a0;
+}
+html[data-theme="dark"] .agenda-status-completed {
+  background: #2d4058;
+  color: #c5ddff;
+}
+html[data-theme="dark"] .agenda-status-no_show {
+  background: #46324f;
+  color: #e7c9ff;
+}
+html[data-theme="dark"] .clinical-warning {
+  background: #3b3527;
+  border-color: #625638;
+  color: #f0dfad;
+}
+html[data-theme="dark"] .clinical-warning strong {
+  color: #ffe8aa;
+}
+html[data-theme="dark"] .clinical-note-item.selected {
+  box-shadow: inset 3px 0 #b6e3c2;
+}
+html[data-theme="dark"] .clinical-note-item:hover,
+html[data-theme="dark"] .clinical-note-item.selected,
+html[data-theme="dark"] .clinical-revision {
+  background: var(--surface-alt);
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] .welcome-row h1 em,
+  html[data-theme="system"] .studio-copy h2 em,
+  html[data-theme="system"] .section-kicker,
+  html[data-theme="system"] .eyebrow,
+  html[data-theme="system"] .text-button,
+  html[data-theme="system"] .auth-back,
+  html[data-theme="system"] .patients-back,
+  html[data-theme="system"] .clinical-history-heading,
+  html[data-theme="system"] .clinical-revision strong,
+  html[data-theme="system"] .agenda-appointment-time strong,
+  html[data-theme="system"] .agenda-appointment-main > strong,
+  html[data-theme="system"] .clinical-note-date,
+  html[data-theme="system"] .clinical-note-full,
+  html[data-theme="system"] .clinical-anamnesis-snapshot p {
+    color: #b6e3c2;
+  }
+  html[data-theme="system"] .field-label,
+  html[data-theme="system"] .auth-form label,
+  html[data-theme="system"] .patient-field label,
+  html[data-theme="system"] .clinical-detail-heading h2,
+  html[data-theme="system"] .clinical-revision p,
+  html[data-theme="system"] .agenda-appointment-main > span,
+  html[data-theme="system"] .agenda-appointment-main > small,
+  html[data-theme="system"] .agenda-appointment-controls select {
+    color: #d5e2d9;
+  }
+  html[data-theme="system"] .finance-kind.income,
+  html[data-theme="system"] .finance-status.paid,
+  html[data-theme="system"] .agenda-status-confirmed {
+    background: #254b37;
+    color: #b6f0cb;
+  }
+  html[data-theme="system"] .finance-kind.expense,
+  html[data-theme="system"] .agenda-status-cancelled {
+    background: #512f2b;
+    color: #ffd0c8;
+  }
+  html[data-theme="system"] .finance-status.pending,
+  html[data-theme="system"] .agenda-status-scheduled {
+    background: #51452a;
+    color: #ffe3a0;
+  }
+  html[data-theme="system"] .agenda-status-completed {
+    background: #2d4058;
+    color: #c5ddff;
+  }
+  html[data-theme="system"] .agenda-status-no_show {
+    background: #46324f;
+    color: #e7c9ff;
+  }
+  html[data-theme="system"] .clinical-warning {
+    background: #3b3527;
+    border-color: #625638;
+    color: #f0dfad;
+  }
+  html[data-theme="system"] .clinical-warning strong {
+    color: #ffe8aa;
+  }
+  html[data-theme="system"] .clinical-note-item.selected {
+    box-shadow: inset 3px 0 #b6e3c2;
+  }
+  html[data-theme="system"] .clinical-note-item:hover,
+  html[data-theme="system"] .clinical-note-item.selected,
+  html[data-theme="system"] .clinical-revision {
+    background: var(--surface-alt);
+  }
+}
