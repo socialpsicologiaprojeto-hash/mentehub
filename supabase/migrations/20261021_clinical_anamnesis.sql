@@ -70,13 +70,15 @@ security definer
 set search_path = pg_catalog, public
 as $$
 begin
-  insert into public.clinical_anamnesis_revisions (
-    owner_id, clinical_anamnesis_id, action, data_snapshot, changed_by
-  ) values (
-    new.owner_id, new.id,
-    case when tg_op = 'INSERT' then 'created' else 'updated' end,
-    new.data, auth.uid()
-  );
+  if tg_op = 'INSERT' or new.data is distinct from old.data then
+    insert into public.clinical_anamnesis_revisions (
+      owner_id, clinical_anamnesis_id, action, data_snapshot, changed_by
+    ) values (
+      new.owner_id, new.id,
+      case when tg_op = 'INSERT' then 'created' else 'updated' end,
+      new.data, auth.uid()
+    );
+  end if;
   return new;
 end;
 $$;
@@ -84,9 +86,7 @@ $$;
 drop trigger if exists clinical_anamneses_record_revision on public.clinical_anamneses;
 create trigger clinical_anamneses_record_revision
 after insert or update of data on public.clinical_anamneses
-for each row
-when (tg_op = 'INSERT' or new.data is distinct from old.data)
-execute function public.record_clinical_anamnesis_revision();
+for each row execute function public.record_clinical_anamnesis_revision();
 
 alter table public.clinical_anamneses enable row level security;
 alter table public.clinical_anamnesis_revisions enable row level security;
