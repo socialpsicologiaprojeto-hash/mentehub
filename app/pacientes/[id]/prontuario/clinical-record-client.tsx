@@ -299,8 +299,8 @@ export default function ClinicalRecordClient({
         setContent((current) => {
           const dictatedSoFar = current.slice(dictationStartLengthRef.current);
           const hasPreviousDictation = Boolean(dictatedSoFar.trim());
-          const endsWithPunctuation = /[.!?,;:]\\s*$/.test(dictatedSoFar);
-          let separator = current && !/\\s$/.test(current) ? " " : "";
+          const endsWithPunctuation = /[.!?,;:]\s*$/.test(dictatedSoFar);
+          let separator = current && !/\s$/.test(current) ? " " : "";
 
           if (hasPreviousDictation && !endsWithPunctuation && !startsWithCommand) {
             if (pauseMs >= 1200) separator = ". ";
