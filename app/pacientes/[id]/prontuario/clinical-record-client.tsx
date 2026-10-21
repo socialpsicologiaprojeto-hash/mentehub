@@ -602,11 +602,12 @@ export default function ClinicalRecordClient({
   }
 
   function printRecord() {
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
       setErrorMessage("O navegador bloqueou a janela de impressão. Permita pop-ups para o MenteHub e tente novamente.");
       return;
     }
+    printWindow.opener = null;
     printWindow.document.open();
     printWindow.document.write(buildPrintableRecord());
     printWindow.document.close();
@@ -658,7 +659,7 @@ export default function ClinicalRecordClient({
             <p className="auth-description">{patientName} · Evoluções clínicas vinculadas ao paciente.</p>
           </div>
           <div className="clinical-toolbar-actions">
-            <button type="button" className="patients-quiet-button" onClick={() => window.print()}><Printer size={15} /> Imprimir / PDF</button>
+            <button type="button" className="patients-quiet-button" onClick={printRecord}><Printer size={15} /> Imprimir / PDF</button>
             <button type="button" className="patients-quiet-button" onClick={exportRecord}><Download size={15} /> Exportar HTML</button>
             <button type="button" className="button button-primary" onClick={startNew}><Plus size={16} /> Nova evolução</button>
           </div>
