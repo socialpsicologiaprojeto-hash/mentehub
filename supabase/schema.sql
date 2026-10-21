@@ -29,6 +29,7 @@ create table if not exists public.patients (
   full_name text not null,
   email text,
   phone text,
+  requires_invoice boolean not null default false,
   status text not null default 'active' check (status in ('active', 'inactive')),
   administrative_notes text,
   created_at timestamptz not null default timezone('utc', now()),
