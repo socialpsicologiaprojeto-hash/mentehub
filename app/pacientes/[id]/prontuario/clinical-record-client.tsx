@@ -286,19 +286,58 @@ export default function ClinicalRecordClient({
 
   const loadAnamnesisHistory = useCallback(async () => {
     setLoadingAnamnesisHistory(true);
-    const { data, error } = await supabase
-      .from("clinical_anamnesis_revisions")
-      .select("id, action, data_snapshot, changed_by, changed_at")
-      .eq("owner_id", (await supabase.auth.getUser()).data.user?.id ?? "")
-      .eq("clinical_anamnesis_id", (await supabase.from("clinical_anamneses").select("id").eq("patient_id", patientId).maybeSingle()).data?.id ?? "")
-      .order("changed_at", { ascending: false });
-    if (error) {
-      setAnamnesisError("Não foi possível carregar o histórico da anamnese. Confira as permissões e a migração do Supabase.");
+    setAnamnesisError("");
+
+    try {
+      const { data: anamnesisRecord, error: anamnesisLookupError } = await supabase
+        .from("clinical_anamneses")
+        .select("id")
+        .eq("patient_id", patientId)
+        .maybeSingle();
+
+      if (anamnesisLookupError) {
+        console.error("MenteHub: falha ao localizar a anamnese para consultar o histórico.", {
+          code: anamnesisLookupError.code,
+          message: anamnesisLookupError.message,
+          details: anamnesisLookupError.details,
+          hint: anamnesisLookupError.hint,
+        });
+        setAnamnesisError("Não foi possível localizar a anamnese no Supabase. Confira a migração e as permissões de acesso.");
+        setAnamnesisRevisions([]);
+        return;
+      }
+
+      if (!anamnesisRecord) {
+        setAnamnesisRevisions([]);
+        return;
+      }
+
+      // A política RLS da tabela limita a consulta às revisões do profissional autenticado.
+      const { data, error } = await supabase
+        .from("clinical_anamnesis_revisions")
+        .select("id, action, data_snapshot, changed_by, changed_at")
+        .eq("clinical_anamnesis_id", anamnesisRecord.id)
+        .order("changed_at", { ascending: false });
+
+      if (error) {
+        console.error("MenteHub: falha ao carregar as revisões da anamnese.", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+        setAnamnesisError("Não foi possível carregar as versões do histórico. Confira se a tabela clinical_anamnesis_revisions existe e se a política de leitura está ativa no Supabase.");
+        setAnamnesisRevisions([]);
+      } else {
+        setAnamnesisRevisions((data ?? []) as AnamnesisRevision[]);
+      }
+    } catch (error) {
+      console.error("MenteHub: erro inesperado ao carregar o histórico da anamnese.", error);
+      setAnamnesisError("Ocorreu um erro inesperado ao carregar o histórico da anamnese. Tente novamente.");
       setAnamnesisRevisions([]);
-    } else {
-      setAnamnesisRevisions((data ?? []) as AnamnesisRevision[]);
+    } finally {
+      setLoadingAnamnesisHistory(false);
     }
-    setLoadingAnamnesisHistory(false);
   }, [patientId, supabase]);
 
   useEffect(() => {
