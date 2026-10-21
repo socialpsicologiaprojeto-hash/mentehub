@@ -411,7 +411,7 @@ export default function ClinicalRecordClient({
                 {dictating && <span role="status">Ouvindo… fale a evolução após a sessão.</span>}
               </div>
               <textarea id="clinical-content" required maxLength={20000} rows={10} value={content} onChange={(event) => setContent(event.target.value)} placeholder="Digite ou dite a evolução e revise o texto antes de salvar." />
-              {dictationMessage && <small role="status">{dictationMessage}</small>}
+              <div className="clinical-dictation-status" role="status" aria-live="polite" style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: "#f3f4f6", color: "#1f2937", fontSize: 13 }}>{dictationMessage || "Ditado pronto. Clique em “Ditar por voz” para iniciar."}</div>
               <small>{content.length.toLocaleString("pt-BR")} / 20.000 caracteres</small>
               <p className="patient-privacy-note">O reconhecimento de voz depende do navegador e pode ser processado por seu fornecedor. Use o ditado somente após a sessão, nunca para gravar a conversa com o paciente. Revise o texto antes de salvar.</p>
             </div>
