@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpenText, CalendarDays, Download, FileText, History, LogOut, Mic, MicOff, Plus, Printer, Save, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, FileText, History, LogOut, Mic, MicOff, Plus, Printer, Save, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 
@@ -641,32 +641,21 @@ export default function ClinicalRecordClient({
   }
 
   function printRecord() {
+    setErrorMessage("");
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      setErrorMessage("O navegador bloqueou a janela de impressão. Permita pop-ups para o MenteHub e tente novamente.");
+      setErrorMessage("O navegador bloqueou a exportação. Permita pop-ups para o MenteHub e tente novamente.");
       return;
     }
     printWindow.opener = null;
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
     printWindow.document.open();
     printWindow.document.write(buildPrintableRecord());
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
   }
-
-  function exportRecord() {
-    const html = buildPrintableRecord();
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `prontuario-${patientName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-]+/g, "-").toLowerCase()}.html`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -698,8 +687,7 @@ export default function ClinicalRecordClient({
             <p className="auth-description">{patientName} · Evoluções clínicas vinculadas ao paciente.</p>
           </div>
           <div className="clinical-toolbar-actions">
-            <button type="button" className="patients-quiet-button" onClick={printRecord}><Printer size={15} /> Imprimir / PDF</button>
-            <button type="button" className="patients-quiet-button" onClick={exportRecord}><Download size={15} /> Exportar HTML</button>
+            <button type="button" className="patients-quiet-button" onClick={printRecord} title="Na janela de impressão, escolha Salvar como PDF"><Printer size={15} /> Exportar PDF</button>
             <button type="button" className="button button-primary" onClick={startNew}><Plus size={16} /> Nova evolução</button>
           </div>
         </div>
