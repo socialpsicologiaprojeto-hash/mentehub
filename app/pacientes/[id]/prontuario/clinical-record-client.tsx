@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpenText, CalendarDays, FileText, History, LogOut, Mic, MicOff, Plus, Save, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, Download, FileText, History, LogOut, Mic, MicOff, Plus, Printer, Save, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 
@@ -91,6 +91,33 @@ type Revision = {
   changed_at: string;
 };
 
+type AnamnesisRevision = {
+  id: string;
+  action: "created" | "updated";
+  data_snapshot: Partial<AnamnesisData>;
+  changed_by: string;
+  changed_at: string;
+};
+
+const anamnesisLabels: Record<keyof AnamnesisData, string> = {
+  birthDate: "Data de nascimento",
+  education: "Escolaridade",
+  emergencyContact: "Contato emergencial",
+  address: "Endereço",
+  profession: "Profissão",
+  referral: "Encaminhamento",
+  responsibleTherapist: "Terapeuta responsável",
+  professionalCouncil: "Conselho de classe",
+  initialComplaint: "Demanda / queixa inicial",
+  currentHistory: "História da demanda atual",
+  personalHistory: "História pessoal e desenvolvimento",
+  familySocialHistory: "História familiar, relações e contexto social",
+  healthHistory: "Saúde geral e histórico relevante",
+  medications: "Medicamentos informados",
+  goals: "Expectativas e objetivos",
+  observations: "Observações relevantes",
+};
+
 const statusLabels: Record<string, string> = {
   scheduled: "Agendada",
   confirmed: "Confirmada",
@@ -161,6 +188,9 @@ export default function ClinicalRecordClient({
   const [loadingAnamnesis, setLoadingAnamnesis] = useState(true);
   const [savingAnamnesis, setSavingAnamnesis] = useState(false);
   const [anamnesisError, setAnamnesisError] = useState("");
+  const [anamnesisRevisions, setAnamnesisRevisions] = useState<AnamnesisRevision[]>([]);
+  const [loadingAnamnesisHistory, setLoadingAnamnesisHistory] = useState(false);
+  const [showAnamnesisHistory, setShowAnamnesisHistory] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -253,6 +283,23 @@ export default function ClinicalRecordClient({
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const loadAnamnesisHistory = useCallback(async () => {
+    setLoadingAnamnesisHistory(true);
+    const { data, error } = await supabase
+      .from("clinical_anamnesis_revisions")
+      .select("id, action, data_snapshot, changed_by, changed_at")
+      .eq("owner_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .eq("clinical_anamnesis_id", (await supabase.from("clinical_anamneses").select("id").eq("patient_id", patientId).maybeSingle()).data?.id ?? "")
+      .order("changed_at", { ascending: false });
+    if (error) {
+      setAnamnesisError("Não foi possível carregar o histórico da anamnese. Confira as permissões e a migração do Supabase.");
+      setAnamnesisRevisions([]);
+    } else {
+      setAnamnesisRevisions((data ?? []) as AnamnesisRevision[]);
+    }
+    setLoadingAnamnesisHistory(false);
+  }, [patientId, supabase]);
 
   useEffect(() => {
     let active = true;
@@ -456,6 +503,7 @@ export default function ClinicalRecordClient({
       if (error) throw error;
       if (!data?.id) throw new Error("O banco não confirmou o salvamento da anamnese.");
       setAnamnesisExists(true);
+      await loadAnamnesisHistory();
       setNotice("Anamnese salva. As versões anteriores ficam registradas no histórico.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
@@ -517,6 +565,68 @@ export default function ClinicalRecordClient({
     }
   }
 
+  function buildPrintableRecord() {
+    const esc = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char] ?? char);
+    const field = (label: string, value: string) => value.trim()
+      ? `<section class="field"><h3>${esc(label)}</h3><p>${esc(value).replace(/\n/g, "<br>")}</p></section>`
+      : "";
+    const general = [
+      ["Data de nascimento", anamnesis.birthDate],
+      ["Idade", calculateAge(anamnesis.birthDate)],
+      ["Escolaridade", anamnesis.education],
+      ["Telefone", patientPhone || "Não informado"],
+      ["Contato emergencial", anamnesis.emergencyContact],
+      ["Endereço", anamnesis.address],
+      ["Profissão", anamnesis.profession],
+      ["Encaminhamento", anamnesis.referral],
+      ["Terapeuta responsável", anamnesis.responsibleTherapist],
+      ["Conselho de classe", anamnesis.professionalCouncil],
+    ].map(([label, value]) => field(label, value)).join("");
+    const anamnesisSections = (Object.keys(anamnesisLabels) as Array<keyof AnamnesisData>)
+      .filter((key) => !["birthDate", "education", "emergencyContact", "address", "profession", "referral", "responsibleTherapist", "professionalCouncil"].includes(key))
+      .map((key) => field(anamnesisLabels[key], anamnesis[key])).join("");
+    const evolutions = notes.length
+      ? notes.map((note) => `<article class="evolution"><h3>Evolução — ${esc(formatDate(note.updated_at))}</h3><p>${esc(note.content).replace(/\n/g, "<br>")}</p></article>`).join("")
+      : "<p>Nenhuma evolução registrada.</p>";
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Prontuário — ${esc(patientName)}</title><style>
+      body{font:12pt Arial,sans-serif;color:#222;max-width:800px;margin:32px auto;padding:0 24px;line-height:1.55}
+      h1{font-size:22pt;margin-bottom:4px}h2{font-size:16pt;border-bottom:1px solid #bbb;padding-bottom:6px;margin-top:28px}
+      h3{font-size:11pt;margin:14px 0 4px}.field p,.evolution p{margin:0;white-space:normal;overflow-wrap:anywhere}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px}.field{break-inside:avoid}.evolution{border-top:1px solid #ddd;padding:12px 0;break-inside:avoid}
+      .confidential{font-size:9pt;color:#555;margin:4px 0 20px}@media print{body{margin:0 auto;padding:0 8mm}button{display:none}}
+    </style></head><body><h1>Prontuário Psicológico</h1><div><strong>Paciente:</strong> ${esc(patientName)}</div><p class="confidential">Documento confidencial — uso profissional restrito.</p>
+      <h2>Dados gerais</h2><div class="grid">${general}</div><h2>Anamnese</h2>${anamnesisSections || "<p>Anamnese sem campos preenchidos.</p>"}<h2>Evoluções clínicas</h2>${evolutions}
+      <p class="confidential">Gerado pelo MenteHub em ${esc(new Date().toLocaleString("pt-BR"))}. Revise antes de utilizar ou compartilhar.</p></body></html>`;
+  }
+
+  function printRecord() {
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      setErrorMessage("O navegador bloqueou a janela de impressão. Permita pop-ups para o MenteHub e tente novamente.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(buildPrintableRecord());
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
+  function exportRecord() {
+    const html = buildPrintableRecord();
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `prontuario-${patientName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-]+/g, "-").toLowerCase()}.html`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -547,7 +657,11 @@ export default function ClinicalRecordClient({
             <h1>Prontuário</h1>
             <p className="auth-description">{patientName} · Evoluções clínicas vinculadas ao paciente.</p>
           </div>
-          <button type="button" className="button button-primary" onClick={startNew}><Plus size={16} /> Nova evolução</button>
+          <div className="clinical-toolbar-actions">
+            <button type="button" className="patients-quiet-button" onClick={() => window.print()}><Printer size={15} /> Imprimir / PDF</button>
+            <button type="button" className="patients-quiet-button" onClick={exportRecord}><Download size={15} /> Exportar HTML</button>
+            <button type="button" className="button button-primary" onClick={startNew}><Plus size={16} /> Nova evolução</button>
+          </div>
         </div>
 
         <div className="clinical-warning" role="note">
@@ -560,7 +674,10 @@ export default function ClinicalRecordClient({
               <h2>Anamnese</h2>
               <p className="clinical-muted">Entrevista inicial e informações gerais do paciente</p>
             </div>
-            <span className="clinical-note-meta">{loadingAnamnesis ? "Carregando…" : anamnesisExists ? "Salva" : "Ainda não salva"}</span>
+            <div className="clinical-anamnesis-heading-actions">
+              <span className="clinical-note-meta">{loadingAnamnesis ? "Carregando…" : anamnesisExists ? "Salva" : "Ainda não salva"}</span>
+              <button type="button" className="patients-quiet-button" onClick={() => { const next = !showAnamnesisHistory; setShowAnamnesisHistory(next); if (next) void loadAnamnesisHistory(); }}><History size={14} /> {showAnamnesisHistory ? "Ocultar histórico" : "Histórico da anamnese"}</button>
+            </div>
           </div>
           {anamnesisError && <div className="patients-error" role="alert">{anamnesisError}</div>}
           <form onSubmit={handleSaveAnamnesis}>
@@ -655,6 +772,29 @@ export default function ClinicalRecordClient({
               <button type="submit" className="button button-primary" disabled={savingAnamnesis || loadingAnamnesis}><Save size={15} /> {savingAnamnesis ? "Salvando anamnese…" : "Salvar anamnese"}</button>
             </div>
           </form>
+          {showAnamnesisHistory && (
+            <section className="clinical-anamnesis-history" aria-label="Histórico da anamnese">
+              <div className="clinical-history-heading"><History size={15} /><strong>Histórico de versões da anamnese</strong></div>
+              {loadingAnamnesisHistory ? <p className="clinical-muted">Carregando histórico…</p> : anamnesisRevisions.length === 0 ? (
+                <p className="clinical-muted">Nenhuma versão encontrada. As versões futuras serão registradas a cada salvamento com alterações.</p>
+              ) : (
+                <div className="clinical-revision-list">
+                  {anamnesisRevisions.map((revision) => (
+                    <article className="clinical-revision" key={revision.id}>
+                      <div><strong>{revision.action === "created" ? "Anamnese criada" : "Anamnese atualizada"}</strong><time>{formatDate(revision.changed_at)}</time></div>
+                      <div className="clinical-anamnesis-snapshot">
+                        {(Object.keys(anamnesisLabels) as Array<keyof AnamnesisData>).map((key) => {
+                          const value = revision.data_snapshot?.[key];
+                          if (!value) return null;
+                          return <p key={key}><strong>{anamnesisLabels[key]}:</strong> {key === "birthDate" ? value : value}</p>;
+                        })}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </section>
 
         {notice && <div className="patients-notice" role="status">{notice}<button type="button" onClick={() => setNotice("")} aria-label="Fechar aviso"><X size={15} /></button></div>}
