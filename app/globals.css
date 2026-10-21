@@ -182,3 +182,101 @@
 .patient-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}
 @media(max-width:1000px){.finance-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.finance-summary{grid-template-columns:1fr 1fr;gap:8px}.finance-stat{padding:12px}.finance-stat>span{font-size:11px}.finance-toolbar label{width:100%;justify-content:space-between}.finance-toolbar input{max-width:170px}.finance-actions{width:100%}.finance-actions .button{flex:1;justify-content:center}}
+
+
+/* Refinamento visual do painel principal */
+.app-shell,
+.app-shell * {
+  font-family: var(--sans);
+}
+.app-shell a {
+  color: inherit;
+  text-decoration: none;
+}
+.app-shell a:hover {
+  color: var(--green);
+}
+.app-shell h1,
+.app-shell h2,
+.app-shell h3,
+.app-shell .template-preview p {
+  font-family: var(--serif);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.app-shell .welcome-row h1 {
+  font-size: clamp(28px, 2.5vw, 38px);
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+.app-shell .welcome-row h1 em,
+.app-shell .studio-copy h2 em {
+  font-family: var(--serif);
+  font-weight: 500;
+}
+.app-shell .subheading,
+.app-shell .section-desc {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.app-shell .section-heading h2 {
+  font-size: 25px;
+  line-height: 1.3;
+  margin: 0;
+}
+.app-shell .template-preview {
+  position: relative;
+  overflow: hidden;
+}
+.app-shell .template-preview p {
+  font-size: 20px;
+  line-height: 1.35;
+  margin: 14px 0 20px;
+  max-width: 250px;
+}
+.app-shell .template-meta strong {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.app-shell .template-meta small {
+  display: block;
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.55;
+  margin-top: 3px;
+}
+.app-shell .nav-link {
+  font-size: 13px;
+  text-decoration: none;
+}
+.app-shell .template-card,
+.app-shell .template-card:hover,
+.app-shell .template-card:focus-visible {
+  color: var(--ink);
+  text-decoration: none;
+}
+.app-shell .template-card:focus-visible,
+.app-shell .nav-link:focus-visible,
+.app-shell .text-button:focus-visible {
+  outline: 2px solid #789b83;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.app-shell .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--green);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .app-shell .welcome-row h1 { font-size: 29px; }
+  .app-shell .section-heading h2 { font-size: 22px; }
+  .app-shell .template-preview p { font-size: 18px; }
+}
