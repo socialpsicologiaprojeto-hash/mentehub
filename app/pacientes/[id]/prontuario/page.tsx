@@ -17,7 +17,7 @@ export default async function ClinicalRecordPage({ params }: PageProps) {
 
   const { data: patient, error } = await supabase
     .from("patients")
-    .select("id, full_name")
+    .select("id, full_name, phone")
     .eq("id", id)
     .maybeSingle();
 
@@ -27,6 +27,7 @@ export default async function ClinicalRecordPage({ params }: PageProps) {
     <ClinicalRecordClient
       patientId={patient.id}
       patientName={patient.full_name}
+      patientPhone={patient.phone ?? ""}
       userEmail={authData.user.email ?? ""}
     />
   );
