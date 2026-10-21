@@ -137,3 +137,12 @@
 .clinical-muted{font-size:11px;color:#8b968d}
 .clinical-detail-empty{min-height:260px}
 @media(max-width:760px){.clinical-record-grid{grid-template-columns:1fr}.clinical-detail-heading{align-items:flex-start}.clinical-revision>div{align-items:flex-start;flex-direction:column;gap:5px}}
+
+
+/* Ferramentas do prontuário e histórico da anamnese */
+.clinical-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.clinical-anamnesis-heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clinical-anamnesis-history{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.clinical-anamnesis-snapshot{margin-top:10px}
+.clinical-anamnesis-snapshot p{margin:7px 0;font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:#56655a}
+@media(max-width:760px){.clinical-toolbar-actions{width:100%;justify-content:flex-start}.clinical-anamnesis-heading-actions{align-items:flex-start;flex-direction:column}}
