@@ -12,13 +12,15 @@ type Props = {
   initialName: string;
   initialRegistration: string;
   initialTimezone: string;
+  initialThemePreference: "light" | "dark" | "system";
 };
 
-export default function ProfileClient({ userId, email, initialName, initialRegistration, initialTimezone }: Props) {
+export default function ProfileClient({ userId, email, initialName, initialRegistration, initialTimezone, initialThemePreference }: Props) {
   const router = useRouter();
   const [fullName, setFullName] = useState(initialName);
   const [registration, setRegistration] = useState(initialRegistration);
   const [timezone, setTimezone] = useState(initialTimezone);
+  const [themePreference, setThemePreference] = useState<"light" | "dark" | "system">(initialThemePreference);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -35,6 +37,7 @@ export default function ProfileClient({ userId, email, initialName, initialRegis
         full_name: fullName.trim(),
         professional_registration: registration.trim() || null,
         timezone,
+        theme_preference: themePreference,
       }, { onConflict: "id" });
       if (error) throw error;
       setSuccessMessage("Perfil salvo com sucesso.");
@@ -70,6 +73,14 @@ export default function ProfileClient({ userId, email, initialName, initialRegis
             <option value="America/Rio_Branco">Rio Branco (America/Rio_Branco)</option>
             <option value="America/Noronha">Fernando de Noronha (America/Noronha)</option>
           </select>
+          <label htmlFor="theme-preference">Aparência do sistema</label>
+          <div className="profile-theme-options">
+            <select id="theme-preference" value={themePreference} onChange={(event) => setThemePreference(event.target.value as "light" | "dark" | "system")}>
+              <option value="system">Automático (acompanhar dispositivo)</option>
+              <option value="light">Claro</option>
+              <option value="dark">Escuro</option>
+            </select>
+          </div>
           {errorMessage && <p className="auth-message auth-error" role="alert">{errorMessage}</p>}
           {successMessage && <p className="auth-message auth-success" role="status">{successMessage}</p>}
           <button className="button button-primary auth-submit" type="submit" disabled={busy}>

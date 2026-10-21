@@ -19,6 +19,7 @@ create table if not exists public.profiles (
   full_name text not null default '',
   professional_registration text,
   timezone text not null default 'America/Sao_Paulo',
+  theme_preference text not null default 'system' check (theme_preference in ('light', 'dark', 'system')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );

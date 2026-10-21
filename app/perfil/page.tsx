@@ -11,7 +11,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, professional_registration, timezone")
+    .select("full_name, professional_registration, timezone, theme_preference")
     .eq("id", auth.user.id)
     .maybeSingle();
 
@@ -22,6 +22,7 @@ export default async function ProfilePage() {
       initialName={profile?.full_name ?? ""}
       initialRegistration={profile?.professional_registration ?? ""}
       initialTimezone={profile?.timezone ?? "America/Sao_Paulo"}
+      initialThemePreference={profile?.theme_preference === "light" || profile?.theme_preference === "dark" ? profile.theme_preference : "system"}
     />
   );
 }
