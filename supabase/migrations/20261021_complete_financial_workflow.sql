@@ -204,7 +204,8 @@ begin
       then public.financial_transactions.due_date else excluded.due_date end,
     payment_method = case when public.financial_transactions.status = 'paid'
       then public.financial_transactions.payment_method else excluded.payment_method end,
-    status = case when public.financial_transactions.status = 'paid' then 'paid' else 'pending' end,
+    status = case when public.financial_transactions.status in ('paid', 'cancelled')
+      then public.financial_transactions.status else 'pending' end,
     paid_at = case when public.financial_transactions.status = 'paid'
       then public.financial_transactions.paid_at else null end,
     updated_at = now();
