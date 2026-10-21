@@ -30,6 +30,11 @@ create table if not exists public.patients (
   email text,
   phone text,
   requires_invoice boolean not null default false,
+  billing_mode text not null default 'per_session' check (billing_mode in ('per_session', 'monthly')),
+  default_session_price numeric(12,2) check (default_session_price is null or default_session_price >= 0),
+  monthly_fee numeric(12,2) check (monthly_fee is null or monthly_fee > 0),
+  billing_due_day smallint check (billing_due_day is null or billing_due_day between 1 and 28),
+  preferred_payment_method text check (preferred_payment_method in ('pix', 'cash', 'credit_card', 'debit_card', 'bank_transfer', 'other')),
   status text not null default 'active' check (status in ('active', 'inactive')),
   administrative_notes text,
   created_at timestamptz not null default timezone('utc', now()),
@@ -64,6 +69,9 @@ create table if not exists public.financial_transactions (
   due_date date,
   paid_at timestamptz,
   payment_method text check (payment_method in ('pix', 'cash', 'credit_card', 'debit_card', 'bank_transfer', 'other')),
+  generated_from_appointment boolean not null default false,
+  generated_from_monthly boolean not null default false,
+  billing_period date,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint transactions_description_not_blank check (length(trim(description)) > 0)
@@ -98,6 +106,12 @@ create index if not exists appointments_owner_starts_idx on public.appointments 
 create index if not exists appointments_patient_idx on public.appointments (patient_id);
 create index if not exists transactions_owner_due_idx on public.financial_transactions (owner_id, due_date);
 create index if not exists transactions_patient_idx on public.financial_transactions (patient_id);
+create unique index if not exists financial_transactions_generated_appointment_uidx
+  on public.financial_transactions (appointment_id)
+  where generated_from_appointment = true and appointment_id is not null;
+create unique index if not exists financial_transactions_generated_monthly_uidx
+  on public.financial_transactions (owner_id, patient_id, billing_period)
+  where generated_from_monthly = true and patient_id is not null and billing_period is not null;
 
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at before update on public.profiles
