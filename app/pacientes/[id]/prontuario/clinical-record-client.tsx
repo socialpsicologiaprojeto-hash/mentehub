@@ -70,15 +70,15 @@ function formatDate(value: string) {
 
 function formatDictatedText(value: string): string {
   const punctuationCommands: Array<[RegExp, string]> = [
-    [/\\bponto e vírgula\\b/gi, ";"],
-    [/\\bponto de interrogação\\b/gi, "?"],
-    [/\\bponto de exclamação\\b/gi, "!"],
-    [/\\bponto final\\b/gi, "."],
-    [/\\bdois pontos\\b/gi, ":"],
-    [/\\bvírgula\\b/gi, ","],
-    [/\\bvirgula\\b/gi, ","],
-    [/\\bnovo parágrafo\\b/gi, "\\n\\n"],
-    [/\\bnova linha\\b/gi, "\\n"],
+    [/\bponto e vírgula\b/gi, ";"],
+    [/\bponto de interrogação\b/gi, "?"],
+    [/\bponto de exclamação\b/gi, "!"],
+    [/\bponto final\b/gi, "."],
+    [/\bdois pontos\b/gi, ":"],
+    [/\bvírgula\b/gi, ","],
+    [/\bvirgula\b/gi, ","],
+    [/\b(?:novo\s+)?parágrafo\b/gi, "\n\n"],
+    [/\b(?:nova linha|quebra de linha)\b/gi, "\n"],
   ];
 
   let formatted = value;
@@ -87,16 +87,16 @@ function formatDictatedText(value: string): string {
   }
 
   formatted = formatted
-    .replace(/[ \\t]+/g, " ")
-    .replace(/[ \\t]*([,;:!?])/g, "$1")
-    .replace(/([,;:!?])(?=\\S)/g, "$1 ")
-    .replace(/([.!?])(?=[A-Za-zÀ-ÿ])/g, "$1 ")
-    .replace(/[ \\t]+\\n/g, "\\n")
-    .replace(/\\n[ \\t]+/g, "\\n")
-    .replace(/\\n{3,}/g, "\\n\\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*([,;:!?])/g, "$1")
+    .replace(/([,;:!?])(?=\S)/g, "$1 ")
+    .replace(/[ \t]*([.!?])(?=\S)/g, "$1 ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/([.!?])(?:[ \t]*[.!?])+/g, "$1")
     .trim();
 
-  formatted = formatted.replace(/(^|[.!?]\\s+|\\n+)([a-zà-ÿ])/giu, (_, prefix: string, letter: string) =>
+  formatted = formatted.replace(/(^|[.!?]\s+|\n+)([a-zà-ÿ])/giu, (_, prefix: string, letter: string) =>
     prefix + letter.toLocaleUpperCase("pt-BR")
   );
   formatted = formatted.replace(/[,:;]+$/g, "").trimEnd();
@@ -135,6 +135,7 @@ export default function ClinicalRecordClient({
   const dictationErrorRef = useRef(false);
   const dictationStartLengthRef = useRef(0);
   const dictationHasResultRef = useRef(false);
+  const dictationLastResultAtRef = useRef(0);
 
   const loadNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -247,8 +248,7 @@ export default function ClinicalRecordClient({
     if (dictating) {
       userStoppedDictationRef.current = true;
       recognitionRef.current?.stop();
-      setDictating(false);
-      setDictationMessage("Ditado parado. Revise o texto antes de salvar.");
+      setDictationMessage("Finalizando o ditado e aplicando a pontuação…");
       return;
     }
 
@@ -267,6 +267,7 @@ export default function ClinicalRecordClient({
     dictationErrorRef.current = false;
     dictationStartLengthRef.current = content.length;
     dictationHasResultRef.current = false;
+    dictationLastResultAtRef.current = 0;
     let recognition: SpeechRecognitionLike;
     try {
       recognition = new SpeechRecognition();
@@ -290,11 +291,25 @@ export default function ClinicalRecordClient({
       if (finalized.length) {
         dictationHasResultRef.current = true;
         const transcript = finalized.join(" ");
+        const now = Date.now();
+        const pauseMs = dictationLastResultAtRef.current ? now - dictationLastResultAtRef.current : 0;
+        dictationLastResultAtRef.current = now;
+        const startsWithCommand = /^(?:vírgula|virgula|ponto final|ponto e vírgula|ponto de interrogação|ponto de exclamação|dois pontos|parágrafo|novo parágrafo|nova linha)\b/i.test(transcript);
+
         setContent((current) => {
-          const separator = current && !/\s$/.test(current) ? " " : "";
-          return (current + separator + transcript).slice(0, 20000);
+          const dictatedSoFar = current.slice(dictationStartLengthRef.current);
+          const hasPreviousDictation = Boolean(dictatedSoFar.trim());
+          const endsWithPunctuation = /[.!?,;:]\\s*$/.test(dictatedSoFar);
+          let separator = current && !/\\s$/.test(current) ? " " : "";
+
+          if (hasPreviousDictation && !endsWithPunctuation && !startsWithCommand) {
+            if (pauseMs >= 1200) separator = ". ";
+            else if (pauseMs >= 550) separator = ", ";
+          }
+          const next = current + separator + transcript;
+          return next.slice(0, 20000);
         });
-        setDictationMessage("Transcrição recebida. Continue falando ou pare o ditado para revisar.");
+        setDictationMessage("Transcrição recebida. Pausas longas serão tratadas como fim de frase; revise antes de salvar.");
       }
     };
     recognition.onnomatch = () => {
@@ -471,7 +486,7 @@ export default function ClinicalRecordClient({
             <p className="patient-privacy-note">Cada salvamento gera uma versão no histórico. Não use o campo administrativo do cadastro de pacientes para anotações clínicas.</p>
             <div className="patient-form-actions">
               <button type="button" className="patients-quiet-button" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancelar</button>
-              <button type="submit" className="button button-primary" disabled={saving}><Save size={15} /> {saving ? "Salvando…" : "Salvar evolução"}</button>
+              <button type="submit" className="button button-primary" disabled={saving || dictating}><Save size={15} /> {saving ? "Salvando…" : dictating ? "Finalize o ditado para salvar" : "Salvar evolução"}</button>
             </div>
           </form>
         )}
