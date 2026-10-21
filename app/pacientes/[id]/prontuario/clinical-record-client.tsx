@@ -29,6 +29,44 @@ declare global {
   }
 }
 
+type AnamnesisData = {
+  birthDate: string;
+  education: string;
+  emergencyContact: string;
+  address: string;
+  profession: string;
+  referral: string;
+  responsibleTherapist: string;
+  professionalCouncil: string;
+  initialComplaint: string;
+  currentHistory: string;
+  personalHistory: string;
+  familySocialHistory: string;
+  healthHistory: string;
+  medications: string;
+  goals: string;
+  observations: string;
+};
+
+const emptyAnamnesis: AnamnesisData = {
+  birthDate: "",
+  education: "",
+  emergencyContact: "",
+  address: "",
+  profession: "",
+  referral: "",
+  responsibleTherapist: "",
+  professionalCouncil: "",
+  initialComplaint: "",
+  currentHistory: "",
+  personalHistory: "",
+  familySocialHistory: "",
+  healthHistory: "",
+  medications: "",
+  goals: "",
+  observations: "",
+};
+
 type ClinicalNote = {
   id: string;
   patient_id: string;
@@ -109,13 +147,20 @@ export default function ClinicalRecordClient({
   patientId,
   patientName,
   userEmail,
+  patientPhone,
 }: {
   patientId: string;
   patientName: string;
   userEmail: string;
+  patientPhone: string;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
+  const [anamnesis, setAnamnesis] = useState<AnamnesisData>(emptyAnamnesis);
+  const [anamnesisExists, setAnamnesisExists] = useState(false);
+  const [loadingAnamnesis, setLoadingAnamnesis] = useState(true);
+  const [savingAnamnesis, setSavingAnamnesis] = useState(false);
+  const [anamnesisError, setAnamnesisError] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -208,6 +253,29 @@ export default function ClinicalRecordClient({
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadAnamnesis() {
+      setLoadingAnamnesis(true);
+      setAnamnesisError("");
+      const { data, error } = await supabase
+        .from("clinical_anamneses")
+        .select("data")
+        .eq("patient_id", patientId)
+        .maybeSingle();
+      if (!active) return;
+      if (error) {
+        setAnamnesisError("Não foi possível carregar a anamnese. Confirme se a nova migração de anamnese foi aplicada no Supabase.");
+      } else if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+        setAnamnesis({ ...emptyAnamnesis, ...(data.data as Partial<AnamnesisData>) });
+        setAnamnesisExists(true);
+      }
+      setLoadingAnamnesis(false);
+    }
+    void loadAnamnesis();
+    return () => { active = false; };
+  }, [patientId, supabase]);
 
   useEffect(() => () => {
     recognitionRef.current?.stop();
@@ -360,6 +428,43 @@ export default function ClinicalRecordClient({
     }
   }
 
+  function updateAnamnesis(field: keyof AnamnesisData, value: string) {
+    setAnamnesis((current) => ({ ...current, [field]: value }));
+  }
+
+  function calculateAge(birthDate: string) {
+    if (!birthDate) return "—";
+    const birth = new Date(`${birthDate}T12:00:00`);
+    if (Number.isNaN(birth.getTime())) return "—";
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age -= 1;
+    return age >= 0 ? `${age} anos` : "—";
+  }
+
+  async function handleSaveAnamnesis(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingAnamnesis(true);
+    setAnamnesisError("");
+    setNotice("");
+    try {
+      const { data, error } = await supabase
+        .from("clinical_anamneses")
+        .upsert({ patient_id: patientId, data: anamnesis }, { onConflict: "patient_id" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (!data?.id) throw new Error("O banco não confirmou o salvamento da anamnese.");
+      setAnamnesisExists(true);
+      setNotice("Anamnese salva. As versões anteriores ficam registradas no histórico.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setAnamnesisError(message || "Não foi possível salvar a anamnese. Verifique a migração e as permissões no Supabase.");
+    } finally {
+      setSavingAnamnesis(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanContent = content.trim();
@@ -448,6 +553,109 @@ export default function ClinicalRecordClient({
         <div className="clinical-warning" role="note">
           <strong>Confidencialidade:</strong> registre apenas informações necessárias ao atendimento. Revise o conteúdo antes de salvar. Use dados fictícios durante os testes.
         </div>
+
+        <section className="patient-form-card clinical-form-card clinical-anamnesis-card">
+          <div className="patient-form-heading">
+            <div>
+              <h2>Anamnese</h2>
+              <p className="clinical-muted">Entrevista inicial e informações gerais do paciente</p>
+            </div>
+            <span className="clinical-note-meta">{loadingAnamnesis ? "Carregando…" : anamnesisExists ? "Salva" : "Ainda não salva"}</span>
+          </div>
+          {anamnesisError && <div className="patients-error" role="alert">{anamnesisError}</div>}
+          <form onSubmit={handleSaveAnamnesis}>
+            <h3 className="clinical-anamnesis-section-title">Dados gerais</h3>
+            <div className="patient-form-grid">
+              <div className="patient-field patient-field-wide">
+                <label>Nome</label>
+                <input value={patientName} readOnly />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-birth-date">Data de nascimento</label>
+                <input id="anamnesis-birth-date" type="date" value={anamnesis.birthDate} onChange={(event) => updateAnamnesis("birthDate", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label>Idade</label>
+                <input value={calculateAge(anamnesis.birthDate)} readOnly />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-education">Escolaridade</label>
+                <input id="anamnesis-education" maxLength={160} value={anamnesis.education} onChange={(event) => updateAnamnesis("education", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label>Telefone</label>
+                <input value={patientPhone || "Não informado no cadastro"} readOnly />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-emergency">Contato emergencial</label>
+                <input id="anamnesis-emergency" maxLength={240} value={anamnesis.emergencyContact} onChange={(event) => updateAnamnesis("emergencyContact", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-address">Endereço</label>
+                <input id="anamnesis-address" maxLength={500} value={anamnesis.address} onChange={(event) => updateAnamnesis("address", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-profession">Profissão</label>
+                <input id="anamnesis-profession" maxLength={160} value={anamnesis.profession} onChange={(event) => updateAnamnesis("profession", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-referral">Encaminhamento</label>
+                <input id="anamnesis-referral" maxLength={300} value={anamnesis.referral} onChange={(event) => updateAnamnesis("referral", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-therapist">Terapeuta responsável</label>
+                <input id="anamnesis-therapist" maxLength={200} value={anamnesis.responsibleTherapist} onChange={(event) => updateAnamnesis("responsibleTherapist", event.target.value)} />
+              </div>
+              <div className="patient-field">
+                <label htmlFor="anamnesis-council">Conselho de classe</label>
+                <input id="anamnesis-council" maxLength={120} value={anamnesis.professionalCouncil} onChange={(event) => updateAnamnesis("professionalCouncil", event.target.value)} placeholder="Ex.: CRP 00/00000" />
+              </div>
+            </div>
+
+            <h3 className="clinical-anamnesis-section-title">Demanda / queixa inicial</h3>
+            <div className="patient-field">
+              <label htmlFor="anamnesis-complaint">Queixa relatada e motivo da procura</label>
+              <textarea id="anamnesis-complaint" rows={4} maxLength={10000} value={anamnesis.initialComplaint} onChange={(event) => updateAnamnesis("initialComplaint", event.target.value)} placeholder="Registre a demanda inicial com as palavras do paciente quando pertinente." />
+            </div>
+
+            <h3 className="clinical-anamnesis-section-title">Histórico e contexto</h3>
+            <div className="patient-form-grid">
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-current-history">História da demanda atual</label>
+                <textarea id="anamnesis-current-history" rows={4} maxLength={10000} value={anamnesis.currentHistory} onChange={(event) => updateAnamnesis("currentHistory", event.target.value)} placeholder="Início, frequência, contexto, impactos e estratégias já utilizadas." />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-personal-history">História pessoal e desenvolvimento</label>
+                <textarea id="anamnesis-personal-history" rows={4} maxLength={10000} value={anamnesis.personalHistory} onChange={(event) => updateAnamnesis("personalHistory", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-family-social">História familiar, relações e contexto social</label>
+                <textarea id="anamnesis-family-social" rows={4} maxLength={10000} value={anamnesis.familySocialHistory} onChange={(event) => updateAnamnesis("familySocialHistory", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-health">Saúde geral e histórico relevante</label>
+                <textarea id="anamnesis-health" rows={3} maxLength={10000} value={anamnesis.healthHistory} onChange={(event) => updateAnamnesis("healthHistory", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-medications">Medicamentos informados pelo paciente (se pertinente)</label>
+                <textarea id="anamnesis-medications" rows={2} maxLength={5000} value={anamnesis.medications} onChange={(event) => updateAnamnesis("medications", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-goals">Expectativas e objetivos do acompanhamento</label>
+                <textarea id="anamnesis-goals" rows={3} maxLength={10000} value={anamnesis.goals} onChange={(event) => updateAnamnesis("goals", event.target.value)} />
+              </div>
+              <div className="patient-field patient-field-wide">
+                <label htmlFor="anamnesis-observations">Observações relevantes</label>
+                <textarea id="anamnesis-observations" rows={3} maxLength={10000} value={anamnesis.observations} onChange={(event) => updateAnamnesis("observations", event.target.value)} />
+              </div>
+            </div>
+            <p className="patient-privacy-note">A anamnese é informação clínica confidencial. Preencha somente o que for pertinente, revise o conteúdo e salve após o atendimento. As evoluções de cada sessão permanecem em uma seção separada.</p>
+            <div className="patient-form-actions">
+              <span className="clinical-muted">{anamnesisExists ? "Alterações não salvas serão perdidas ao sair." : "Preencha os campos pertinentes; não é obrigatório completar todos."}</span>
+              <button type="submit" className="button button-primary" disabled={savingAnamnesis || loadingAnamnesis}><Save size={15} /> {savingAnamnesis ? "Salvando anamnese…" : "Salvar anamnese"}</button>
+            </div>
+          </form>
+        </section>
 
         {notice && <div className="patients-notice" role="status">{notice}<button type="button" onClick={() => setNotice("")} aria-label="Fechar aviso"><X size={15} /></button></div>}
         {errorMessage && <div className="patients-error" role="alert">{errorMessage}</div>}
